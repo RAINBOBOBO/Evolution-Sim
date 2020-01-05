@@ -363,8 +363,8 @@ class matrix():
         selected = None
         cursorX = cursorY = 0
 
-        xScale = xSize/self.maxX
-        yScale = ySize/self.maxY
+        xScale = math.ceil(xSize/self.maxX)
+        yScale = math.ceil(ySize/self.maxY)
 
         screen = pygame.display.set_mode((screenSizeX, screenSizeY), pygame.NOFRAME | pygame.FULLSCREEN)
 
@@ -427,6 +427,11 @@ class matrix():
                 pygame.draw.rect(screen, light_green, (1455, 200, 310, 50))
             else:
                 pygame.draw.rect(screen, green, (1455, 200, 310, 50))
+
+            smallText = pygame.font.SysFont("arial", 20)
+            textSurf, textRect = text_objects("GO!", smallText)
+            textRect.center = ((1455+(310/2)), (200+(50/2)))
+            screen.blit(textSurf, textRect)
 
             pygame.display.flip()
 
