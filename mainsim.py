@@ -2,6 +2,10 @@ import sys
 import pygame
 import os
 import numpy as np
+import neat
+from abc import ABC, abstractmethod
+from fractions import Fraction
+import math
 
 # import tensorflow as tf
 # from tensorflow.keras import layers
@@ -13,190 +17,109 @@ pygame.init()
 # 1=water
 # 2=creature
 # 3=food
-# 4=hazard
-# 5=out of bounds
+# 4=out of bounds
 
-size = width, height = 500, 500
 black = [0, 0, 0]
-red = [255, 0, 0]
-green = [0, 255, 0]
-blue = [0, 0, 255]
+red = [200, 0, 0]
+green = [0, 200, 0]
+light_green = [0, 255, 0]
+blue = [0, 0, 200]
 yellow = [255, 255, 0]
 white = [255, 255, 255]
 
-PROBABILITY_PERTURBING = 9
-
 os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
-screen = pygame.display.set_mode(size, pygame.NOFRAME)
-maxX = 10
-maxY = 10
-maxTime = 60
-world = np.full((maxX, maxY, maxTime), 1)
+myFont = pygame.font.SysFont("arial", 15)
 sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
 clock = pygame.time.Clock()
 FPS = 60
-seed = 57
+seed = 5
+screenSizeY = 1080
+screenSizeX = 1920
 np.random.seed(seed)
 
 
-def dec(cre, world, time, foodlist, hazlist):
-    num = np.random.randint(0, 4)
-    eatType = 0
-    if num == 0:
-        eatType = cre.move_right(world, time, foodlist, hazlist)
-    elif num == 1:
-        eatType = cre.move_left(world, time, foodlist, hazlist)
-    elif num == 2:
-        eatType = cre.move_up(world, time, foodlist, hazlist)
-    elif num == 3:
-        eatType = cre.move_down(world, time, foodlist, hazlist)
-    return eatType
+def dec():
+    num = np.random.randint(0, 3)
+    return num
 
+def partition(arr,low,high): 
+    i = ( low-1 )         # index of smaller element 
+    pivot = arr[high]     # pivot 
+  
+    for j in range(low , high): 
+  
+        # If current element is smaller than or 
+        # equal to pivot 
+        if   arr[j] <= pivot: 
+          
+            # increment index of smaller element 
+            i = i+1 
+            arr[i],arr[j] = arr[j],arr[i] 
+  
+    arr[i+1],arr[high] = arr[high],arr[i+1] 
+    return ( i+1 ) 
 
-def eat(lists, pos):
-    print(lists)
-    length = len(lists)
-    for x in range(length):
-        if lists[x][0] == pos[0] and lists[x][1] == pos[1]:
-            del lists[x]
-            print(lists)
-            return
-    print(lists)
+# arr[] --> Array to be sorted, 
+# low  --> Starting index, 
+# high  --> Ending index 
+  
+def quickSort(arr,low,high): 
+    if low < high: 
+  
+        # pi is partitioning index, arr[p] is now 
+        # at right place 
+        pi = partition(arr,low,high) 
+  
+        # Separately sort elements before 
+        # partition and after partition 
+        quickSort(arr, low, pi-1) 
+        quickSort(arr, pi+1, high)
 
+def thousandCircle(num):
+    #change any number into a number from 1-1000 where 1000+1=1 and 1-1=1000
+    if num > 1000:
+        newNum = num % 1000
+        return newNum
+    else:
+        return num
 
-def showGenome2(genome1):
-    pygame.draw.rect(screen, white, (0, 0, 500, 500))
-    coords = []
-    ins = 0
-    outs = 0
-    hids = 0
+def text_objects(text, font):
+    textSurface = font.render(text, True, black)
+    return textSurface, textSurface.get_rect()
 
-    #1st loop through to get a count of each type to determine spacing
-    for noder in genome1.get_nodeGenes().values():
-        if (noder.get_type() == 0):
-            ins += 1
-        elif (noder.get_type() == 1):
-            outs += 1
-        elif (noder.get_type() == 2):
-            hids += 1
+class water():
+    def __init__(self):
+        pass
 
-    if ins != 0:
-        inspace = 480/ins
-    if outs != 0:
-        outspace = 470/outs
-    if hids != 0:
-        hidspace = 425/hids
-    icount = 0
-    ocount = 0
-    hcount = 0
-    #2nd loop to assign coordinates
-    #each entry has [id, type, x, y]
-    for noder in genome1.get_nodeGenes().values():
-        if (noder.get_type() == 0):
-            entry = [noder.get_id(), 0, int(inspace * icount) + 20, 490]
-            icount += 1
-            coords.append(entry)
-        elif (noder.get_type() == 1):
-            entry = [noder.get_id(), 1, int(outspace * ocount) + 30, 10]
-            ocount += 1
-            coords.append(entry)
-        elif (noder.get_type() == 2):
-            entry = [noder.get_id(), 2, int(hidspace * hcount) + 75, 250]
-            hcount += 1
-            coords.append(entry)
+class void():
+    def __init__(self):
+        pass
 
-    for nodedraw in coords:
-        pygame.draw.circle(screen, blue, (nodedraw[2], nodedraw[3]), 10)
-
-    for coner in genome1.get_connectionGenes().values():
-        x1 = 0
-        y1 = 0
-        x2 = 0
-        y2 = 0
-        for find in coords:
-            if (coner.get_inNode() == find[0]):
-                x1 = find[2]
-                y1 = find[3]
-            if (coner.get_outNode() == find[0]):
-                x2 = find[2]
-                y2 = find[3]
-        if x1 != 0 and y1 != 0 and x2 != 0 and y2 != 0:
-            if coner.get_expressed():
-                pygame.draw.line(screen, black, (x1,y1), (x2,y2))
-        else:
-            print("couldn't find nodes!!")
-
-
-class food1():
-    def __init__(self, x, y):
+class food():
+    def __init__(self, x, y, edibility = None):
         self.x = x
         self.y = y
         self.pos = [x, y]
+        self.edibility = edibility
 
-    def getX(self):
-        return self.x
-
-    def getY(self):
-        return self.y
-
-    def getPos(self):
+    def get_Pos(self):
         return self.pos
-
-
-class hazard1():
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.pos = [x, y]
-
-    def getX(self):
-        return self.x
-
-    def getY(self):
-        return self.y
-
-    def getPos(self):
-        return self.pos
-
-
-class node():
-    def __init__(self, nextnode = None, prev = None, food1EC = None, resistance = None, x = None, y = None):
-        self.nextnode = nextnode
-        self.prev = prev
-        self.food1EC = food1EC
-        self.resistance = resistance
-        self.x = x
-        self.y = y
-
-    def getX(self):
-        return self.x
-
-    def getY(self):
-        return self.y
-
-    def moveX(self, amt = None):
-        if (amt):
-            self.x += amt
-        else:
-            self.x += 1
-
-    def moveY(self, amt = None):
-        if (amt):
-            self.y += amt
-        else:
-            self.y += 1
 
 class creature():
-    def __init__(self, Body1, speed = None, food = None, health = None, sight = None, actionPoints = None):
-        self.Body1 = Body1
+    def __init__(self, tag = None, speed = None, food = None, health = None, sight = None, actionPoints = None, digestibility = None, digestRange = None, x = None, y = None):
+        self.tag = tag
         self.speed = speed
         self.food = food
         self.health = health
         self.sight = sight
         self.actionPoints = actionPoints
+        self.digestibility = digestibility
+        self.digestRange = digestRange
+        self.x = x
+        self.y = y
 
     def get_Body(self):
-        return self.Body1
+        return self
 
     def get_speed(self):
         return self.speed
@@ -213,145 +136,36 @@ class creature():
     def get_actionPoints(self):
         return self.actionPoints
 
-    def add_food(self, amt = None):
+    def moveX(self, amt = None):
         if (amt):
+            self.x += amt
+        else:
+            self.x += 1
+
+    def moveY(self, amt = None):
+        if (amt):
+            self.y += amt
+        else:
+            self.y += 1
+
+    def add_food(self, amt = None): #make this depend on the digestibility and edibility
+        if amt != None:
             self.food += amt
         else:
             self.food += 1
 
     def add_health(self, amt = None):
-        if (amt):
+        if amt != None:
             self.health += amt
         else:
             self.health += 1
 
-    # for direction: 1=up, 2=right, 3=down, 4=left
-    def can_move(self, direction, world, time):
-        possible = False
-        if direction == 1:
-            if (self.Body1.getY() - self.speed) >= 0:
-                if world[self.Body1.getX(), self.Body1.getY() - self.speed, time] != 2:
-                    possible = True
-        elif direction == 2:
-            if (self.Body1.getX() + self.speed) <= (maxX - 1):
-                if world[self.Body1.getX() + self.speed, self.Body1.getY(), time] != 2:
-                    possible = True
-        elif direction == 3:
-            if (self.Body1.getY() + self.speed) <= (maxY - 1):
-                if world[self.Body1.getX(), self.Body1.getY() + self.speed, time] != 2:
-                    possible = True
-        elif direction == 4:
-            if (self.Body1.getX() - self.speed) >= 0:
-                if world[self.Body1.getX() - self.speed, self.Body1.getY(), time] != 2:
-                    possible = True
-        return possible
-
-    def move_right(self, world, time, foodlist, hazlist):
-        eatType = 0
-        if self.can_move(2, world, time) is True:
-            if world[self.Body1.getX() + 1, self.Body1.getY(), time] == 3:
-                self.add_food()
-                eatType = 3
-                eat(foodlist, (self.Body1.getX() + 1, self.Body1.getY()))
-                print("eaten food ", self.food)
-            elif world[self.Body1.getX() + 1, self.Body1.getY(), time] == 4:
-                self.add_health(-1)
-                eatType = 4
-                eat(hazlist, (self.Body1.getX() + 1, self.Body1.getY()))
-                print("eaten poison", self.health)
-            if self.health <= 0:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveX(self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 3
-            else:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveX(self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        else:
-            world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        return eatType
-
-    def move_left(self, world, time, foodlist, hazlist):
-        eatType = 0
-        if self.can_move(4, world, time) is True:
-            if world[self.Body1.getX() - 1, self.Body1.getY(), time] == 3:
-                self.add_food()
-                eatType = 3
-                eat(foodlist, (self.Body1.getX() - 1, self.Body1.getY()))
-                print("eaten food ", self.food)
-            elif world[self.Body1.getX() - 1, self.Body1.getY(), time] == 4:
-                self.add_health(-1)
-                eatType = 4
-                eat(hazlist, (self.Body1.getX() - 1, self.Body1.getY()))
-                print("eaten poison", self.health)
-            if self.health <= 0:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveX(-self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 3
-            else:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveX(-self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        else:
-            world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        return eatType
-
-    def move_up(self, world, time, foodlist, hazlist):
-        eatType = 0
-        if self.can_move(1, world, time) is True:
-            if world[self.Body1.getX(), self.Body1.getY() - 1, time] == 3:
-                self.add_food()
-                eatType = 3
-                eat(foodlist, (self.Body1.getX(), self.Body1.getY() - 1))
-                print("eaten food ", self.food)
-            elif world[self.Body1.getX(), self.Body1.getY() - 1, time] == 4:
-                self.add_health(-1)
-                eatType = 4
-                eat(hazlist, (self.Body1.getX(), self.Body1.getY() - 1))
-                print("eaten poison", self.health)
-            if self.health <= 0:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveY(-self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 3
-            else:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveY(-self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        else:
-            world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        return eatType
-
-    def move_down(self, world, time, foodlist, hazlist):
-        eatType = 0
-        if self.can_move(3, world, time) is True:
-            if world[self.Body1.getX(), self.Body1.getY() + 1, time] == 3:
-                self.add_food()
-                eatType = 3
-                eat(foodlist, (self.Body1.getX(), self.Body1.getY() + 1))
-                print("eaten food ", self.food)
-            elif world[self.Body1.getX(), self.Body1.getY() + 1, time] == 4:
-                self.add_health(-1)
-                eatType = 4
-                eat(hazlist, (self.Body1.getX(), self.Body1.getY() + 1))
-                print("eaten poison", self.health)
-            if self.health <= 0:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveY(self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 3
-            else:
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 1
-                self.Body1.moveY(self.speed)
-                world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        else:
-            world[self.Body1.getX(), self.Body1.getY(), time + 1] = 2
-        return eatType
-
-    def get_vis(self, world, time):
-        vis = np.full((maxX, maxY), 0)
-        relLeft = (self.Body1.getX() - self.sight)
-        relRight = (self.Body1.getX() + self.sight)
-        relUp = (self.Body1.getY() - self.sight)
-        relDown = (self.Body1.getY() + self.sight)
+    def get_vis(self, world, time, maxX, maxY): #this function is so we have a uniform, square table to work w/ (including out of bounds)
+        vis = np.full((maxX, maxY), water())
+        relLeft = (self.x - self.sight)
+        relRight = (self.x + self.sight)
+        relUp = (self.y - self.sight)
+        relDown = (self.y + self.sight)
         for x in range(maxX):
             for y in range(maxY):
                 if x >= relLeft and x <= relRight and y >= relUp and y <= relDown:
@@ -359,10 +173,10 @@ class creature():
                         vis[y, x] = world[x, y, time]
         return vis
 
-    def process_vis(self, vis):
+    def process_vis(self, vis, maxX, maxY): #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
         newVis = []
-        x = (self.Body1.getX() - 1)
-        y = (self.Body1.getY() - 1)
+        x = (self.x - 1)
+        y = (self.y - 1)
         sideLen = 2
         for a in range(sightLim):
             for looper in range(4):
@@ -371,206 +185,308 @@ class creature():
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[y, x])
                         else:
-                            newVis.append(5)
+                            newVis.append(void())
                         x += 1
                 elif looper == 1:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[y, x])
                         else:
-                            newVis.append(5)
+                            newVis.append(void())
                         y += 1
                 elif looper == 2:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[y, x])
                         else:
-                            newVis.append(5)
+                            newVis.append(void())
                         x -= 1
                 elif looper == 3:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[y, x])
                         else:
-                            newVis.append(5)
+                            newVis.append(void())
                         y -= 1
                     x -= 1
                     y -= 1
                     sideLen += 2
         return newVis
 
-
-class Genome():
+class creatureTagger():
     def __init__(self):
-        self.connections = {}
-        self.nodes = {}
+        self.currentTag = 0
 
-    def addNodeGene(self, gene):
-        self.nodes[gene.id] = gene
+    def get_tag(self):
+        self.currentTag += 1
+        return self.currentTag
 
-    def addConnectionGene(self, gene):
-        self.connections[gene.innovationNum] = gene
+class matrix():
+    def __init__(self, maxX = 1, maxY = 1, maxTime = 1):
+        self.maxX = maxX
+        self.maxY = maxY
+        self.maxTime = maxTime
+        self.matrix = np.full((maxX, maxY, maxTime), water())
+        self.creatures = []
+        self.foods = []
+        self.hazards = []
 
-    def get_connectionGenes(self):
-        return self.connections
+    def copy_matrix(self, copyMatrix):
+        newMatrix = matrix(self.maxX, self.maxY, self.maxTime)
+        newMatrix.matrix = self.matrix
+        newMatrix.creatures = self.creatures
+        newMatrix.foods = self.foods
+        newMatrix.hazards = self.hazards
+        return newMatrix
 
-    def get_nodeGenes(self):
-        return self.nodes
+    def move(self, creature, xDist, yDist, time):
+        self.matrix[creature.x, creature.y, time + 1] = water()
+        if xDist != 0:
+            creature.moveX(xDist)
+        if yDist != 0:
+            creature.moveY(yDist)
+        self.matrix[creature.x, creature.y, time + 1] = creature
 
-    def mutation(self):
-        randy = np.random.random_sample(-2.0,2.0)
-        perturb = np.random.randint(0,11)
-        for con in self.connections.values():
-            if (perturb > PROBABILITY_PERTURBING):
-                con.set_weight(con.get_weight() * randy)
-            else:
-                con.set_weight(randy)
-
-    def addConnectionMutation(self, innovation):
-        randy = np.random.randint(0, len(self.nodes))
-        node1 = self.nodes[randy]
-        randy = np.random.randint(0, len(self.nodes))
-        node2 = self.nodes[randy]
-        tempWeight = np.randint(0, 1)
-
-        isReversed = False
-        if (node1.get_type() == 2 and node2.get_type() == 0):
-            isReversed = True
-        elif (node1.get_type() == 1 and node2.get_type() == 2):
-            isReversed = True
-        elif (node1.get_type() == 1 and node2.get_type() == 0):
-            isReversed = True
-
-        connectionExists = False
-        for con in self.connections:
-            if (self.connections[con].get_inNode() == node1.get_id() and self.connections[con].get_outNode() == node2.get_id()):
-                connectionExists = True
-                break
-            elif (self.connections[con].get_inNode() == node2.get_id() and self.connections[con].get_outNode() == node1.get_id()):
-                connectionExists = True
-                break
-
-        if (connectionExists):
+    def move_Check(self, creature, xDist, yDist, time):
+        if xDist == 0 and yDist == 0:
+            self.move(creature, 0, 0, time)
             return
+        #check position for type
+        targetX = creature.x + xDist
+        targetY = creature.y + yDist
 
-        tempIn = None
-        tempOut = None
-        if (isReversed):
-            tempIn = node2
+        if targetX >= self.maxX or targetX < 0 or targetY >= self.maxY or targetY < 0:
+            self.move(creature, 0, 0, time)
+            return
         else:
-            tempIn = node1
-        if (isReversed):
-            tempOut = node1
+            target = self.matrix[targetX, targetY, time + 1]
+
+        #if creature, displace
+        if target == 2:
+            self.move(creature, 0, 0, time)
+            return
+        elif target == 3:
+            self.move(creature, xDist, yDist, time)
+            self.eat(self.foods, (creature.x, creature.y))
+            self.nutrientCalculator(creature, (creature.x, creature.y))
+            print("ate food at ", time)
+            return
         else:
-            tempOut = node2
+            self.move(creature, xDist, yDist, time)
 
-        tempCon = ConnectionGene(tempIn, tempOut, tempWeight, True, innovation.get_innovation())
-        self.connections[tempCon.get_innovationNum()]
+    def eat(self, lists, pos):
+        length = len(lists)
+        for x in range(length):
+            if lists[x].get_Pos()[0] == pos[0] and lists[x].get_Pos()[1] == pos[1]:
+                del lists[x]
+                return
 
-    def addNodeMutation(self, innovation):
-        randy = np.random.randint(0, len(self.connections))
-        con = self.connections[randy]
+    def poisonCalculator(self, creature, position, digestMax, digestMin):
+        damage = 0
+        #if food is out of edible range, determine poison damage
+        #counting the distances between digestMin/Max and food's edibility number
+        dist1 = dist2 = 0
+        a = digestMax
+        while a != self.foods[x].edibility:
+            a = thousandCircle(a+1)
+            dist1 += 1
+        b = self.foods[x].edibility
+        while b != digestMin:
+            b = thousandCircle(b+1)
+            dist2 += 1
 
-        inNode = self.nodes[con.get_inNode()]
-        outNode = self.nodes[con.get_outNode()]
+        #dividing the max distance into 5 equal parts
+        maxDist = (dist1 + dist2)/2
+        i = maxDist % 5
+        j = maxDist - i
+        k = j / 5
 
-        con.disable()
+        #determining which of digestMin/Max is closer
+        smaller = None
+        if dist1 > dist2:
+            smaller = dist2
+        elif dist1 < dist2:
+            smaller = dist1
+        else:
+            smaller = dist1
 
-        newNode = NodeGene(2, len(self.nodes)+1)
-        inToNew = ConnectionGene(inNode.get_id(), newNode.get_id(), float(1), True, innovation.get_innovation())
-        newToOut = ConnectionGene(newNode.get_id(), outNode.get_id(), con.get_weight(), True, innovation.get_innovation())
+        #determining which 5th the food lies on
+        for fifth in range(1, 6):
+            if smaller < (fifth * k):
+                damage = fifth
+                return damage
+            elif smaller > j and smaller < maxDist:
+                damage = i
+                return damage
 
-        self.nodes[newNode.get_id()] = newNode
-        self.connections[inToNew.get_innovationNum()] = inToNew
-        self.connections[newToOut.get_innovationNum()] = newToOut
+    def nutrientCalculator(self, creature, position):
+        damage = 0
+        #if a creature eats a food that isnt in its range it should take a slow effect or a poison effect based on how far it is from the eatable range
+        digestMax = thousandCircle(creature.digestibility + creature.digestRange)
+        digestMin = thousandCircle(creature.digestibility - creature.digestRange)
 
-    # parent1 fitness > parent2 fitness
-    def crossover(self, parent1, parent2):
-        child = Genome()
+        #finding the food to be eaten and where on the circle it lies relative to the creature's food stats
+        for x in range(len(self.foods)):
+            if self.foods[x].get_Pos()[0] == position[0] and self.foods[x].get_Pos()[1] == position[1]:
+                if self.foods[x].edibility <= digestMax and self.foods[x].edibility >= digestMin:
+                    #if food is in edible range, add food
+                    creature.add_food(abs(creature.digestibility - self.foods[x].edibility))
+                elif self.foods[x].edibility <= digestMax or self.foods[x].edibility >= digestMin:
+                    #if food is in edible range, add food
+                    creature.add_food(abs(creature.digestibility - self.foods[x].edibility))
+                elif self.foods[x].edibility <= digestMax and self.foods[x].edibility >= digestMin:
+                    damage = self.poisonCalculator(creature, position, digestMax, digestMin)
+                    creature.add_health(-damage)
+                elif self.foods[x].edibility <= digestMax or self.foods[x].edibility >= digestMin:
+                    damage = self.poisonCalculator(creature, position, digestMax, digestMin)
+                    creature.add_health(-damage)
+    def attack(self, creature, direction):
+        pass
 
-        for parent1Node in parent1.get_nodeGenes().values():
-            child.addNodeGene(parent1Node.copy())
+    def getVis(self, creature):
+        pass
 
-        for parent1Node in parent1.get_connectionGenes().values():
-            if parent1Node.get_innovationNum() in parent2.get_connectionGenes():  # matching gene
-                r = np.random.randint(0,2)
-                if (r == 0):
-                    childConGene = parent1Node.copy()
-                else:
-                    childConGene = parent2.get_connectionGenes()[parent1Node.get_innovationNum()].copy()
-                child.addConnectionGene(childConGene)
-            else:  # disjoint or excess gene
-                childConGene = parent1Node.copy()
-                child.addConnectionGene(childConGene)
-        return child
+    def next_Second(self):
+        pass
 
+    def show_Vision(self, vis, maxX, maxY, time):
+        for x in range(maxX):
+            for y in range(maxY):
+                if type(vis[x, y, time]) == water:
+                    pass
+                elif type(vis[x, y, time]) == creature:
+                    pass
+                elif type(vis[x, y, time]) == void:
+                    pass
 
-class ConnectionGene():
-    def __init__(self, inNode = None, outNode = None, weight = None, expressed = None, innovationNum = None):
-        self.inNode = inNode
-        self.outNode = outNode
-        self.weight = weight
-        self.expressed = expressed
-        self.innovationNum = innovationNum
+    def show_Matrix(self, xSize, ySize, maxTime):
+        selected = None
+        cursorX = cursorY = 0
 
-    def copy(self):
-        newConnectionGene = ConnectionGene(self.inNode, self.outNode, self.weight, self.expressed, self.innovationNum)
-        return newConnectionGene
+        xScale = xSize/self.maxX
+        yScale = ySize/self.maxY
 
-    def get_inNode(self):
-        return self.inNode
+        screen = pygame.display.set_mode((screenSizeX, screenSizeY), pygame.NOFRAME | pygame.FULLSCREEN)
 
-    def get_outNode(self):
-        return self.outNode
+        state = 2
+        t=0
+        while state == 2:
+            mouse = pygame.mouse.get_pos()
+            for event in pygame.event.get():
+                key = pygame.key.get_pressed()
+                if event.type == pygame.QUIT:
+                    sys.exit()
+                if key[pygame.K_p]:
+                    if t < (maxTime - 1):
+                        t += 1
+                        print("t = ", t)
+                if key[pygame.K_o]:
+                    if t > 0:
+                        t -= 1
+                        print("t = ", t)
+                if key[pygame.K_q]:
+                    state = 1
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if mouse[0] <= xSize and mouse[1] <= ySize:
+                        cursorX = math.floor(mouse[0])
+                        cursorY = math.floor(mouse[1])
+                        print(cursorX, cursorY)
 
-    def get_weight(self):
-        return self.weight
+                        creatureIndex = 0
+                        for selector in self.creatures:
+                            creatureIndex += 1
+                            if self.matrix[cursorX, cursorY, t] == selector:
+                                selected = selector
+                                print("selected at", cursorX, cursorY)
+                        if selected == None:
+                            print("nothing selected at", cursorX, cursorY)
+                        else:
+                            print("creature tag:", selected.tag, " speed:", selected.speed, " food:", selected.food, " health:", selected.health)
+                            print(selected.process_vis(selected.get_vis(self.matrix, t, self.maxX, self.maxY), self.maxX, self.maxY))
+                            
 
-    def get_expressed(self):
-        return self.expressed
+                # if bob.health > 0:
+                #    if key[pygame.K_SPACE]:
+                #        copier = bob.get_vis(world, t)
+                #        print(copier)
+                #        visual = bob.process_vis(copier)
+                #        print(visual)
+                # keep this as a template
+            #matrix drawing
+            for x in range(self.maxX):
+                for y in range(self.maxY):
+                    if type(self.matrix[x, y, t]) == water:
+                        pygame.draw.rect(screen, blue, (x * xScale, y * yScale, xScale, yScale))
+                    elif type(self.matrix[x, y, t]) == creature:
+                        pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
+                    elif type(self.matrix[x, y, t]) == food:
+                        pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
+            #Sidebar drawing
+            pygame.draw.rect(screen, white, (xSize+1, 0, 1920-xSize, 1080))
+            if (1455+310) > mouse[0] > 1455 and (200+50) > mouse[1] > 200:
+                pygame.draw.rect(screen, light_green, (1455, 200, 310, 50))
+            else:
+                pygame.draw.rect(screen, green, (1455, 200, 310, 50))
 
-    def get_innovationNum(self):
-        return self.innovationNum
+            pygame.display.flip()
 
-    def enable(self):
-        self.expressed = True
+def run(config_path):
+    """
+    runs the NEAT algorithm to train a neural network to play flappy bird.
+    :param config_file: location of config file
+    :return: None
+    """
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
 
-    def disable(self):
-        self.expressed = False
+    # Create the population, which is the top-level object for a NEAT run.
+    p = neat.Population(config)
 
-    def set_weight(self, newWeight):
-        self.weight = newWeight
+    # Add a stdout reporter to show progress in the terminal.
+    p.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    p.add_reporter(stats)
 
+    #winner = p.run(eval_genomes, 50)
 
+    # show final stats
+    #print('\nBest genome:\n{!s}'.format(winner))
 
-class NodeGene():
-    def __init__(self, types = None, ids = None):
-        """
-        types can be: 
-        0 = INPUT
-        1 = OUTPUT
-        2 = HIDDEN
-        """
-        self.type = types
-        self.id = ids
+def main(genomes, config):
+    nets = []
+    ge = []
+    creatures = []
 
-    def copy(self):
-        newNodeGene = NodeGene(self.type, self.id)
-        return newNodeGene
+    for _, g in genomes:
+        net = neat.nn.FeedForwardNetwork.create(g, config)
+        nets.append(net)
+        creatures.append(creature(node()))
+        g.fitness = 0
+        ge.append(g)
 
-    def get_type(self):
-        return self.type
+    time = 0
 
-    def get_id(self):
-        return self.id
+    run = True
+    while run:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                quit()
 
-class InnovationGenerator():
-    def __init__(self):
-        self.currentInnovation = 0
+if __name__ == '__main__':
+    # Determine path to configuration file. This path manipulation is
+    # here so that the script will run successfully regardless of the
+    # current working directory.
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'config-feedforward.txt')
+    run(config_path)
 
-    def get_innovation(self):
-        self.currentInnovation += 1
-        return self.currentInnovation
-
-# notes for bugfixes:
-# make getters and setters and fix EVERYTHING
+"""
+notes:
+- make a matrix class, move all of the collision detection into that and make
+    it so the coder can decide the size of the matrix or choose from a set of
+    pre-made sizes in initialization
+- make a class for buttons and menus or something so that it's easy to make
+- maybe make a test code for each function to test if it still works
+"""
