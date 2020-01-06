@@ -21,6 +21,7 @@ pygame.init()
 
 black = [0, 0, 0]
 red = [200, 0, 0]
+light_red = [255, 0, 0]
 green = [0, 200, 0]
 light_green = [0, 255, 0]
 blue = [0, 0, 200]
@@ -82,6 +83,19 @@ def thousandCircle(num):
         return newNum
     else:
         return num
+
+def button(msg, x, y, w, h, ic, ac, screen):
+    mouse = pygame.mouse.get_pos()
+
+    if (x+w) > mouse[0] > x and (y+h) > mouse[1] > y:
+        pygame.draw.rect(screen, ac, (x, y, w, h))
+    else:
+        pygame.draw.rect(screen, ic, (x, y, w, h))
+
+    smallText = pygame.font.SysFont("arial", 20)
+    textSurf, textRect = text_objects(msg, smallText)
+    textRect.center = ((x+(w/2)), (y+(h/2)))
+    screen.blit(textSurf, textRect)
 
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
@@ -423,15 +437,9 @@ class matrix():
                         pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
             #Sidebar drawing
             pygame.draw.rect(screen, white, (xSize+1, 0, 1920-xSize, 1080))
-            if (1455+310) > mouse[0] > 1455 and (200+50) > mouse[1] > 200:
-                pygame.draw.rect(screen, light_green, (1455, 200, 310, 50))
-            else:
-                pygame.draw.rect(screen, green, (1455, 200, 310, 50))
 
-            smallText = pygame.font.SysFont("arial", 20)
-            textSurf, textRect = text_objects("GO!", smallText)
-            textRect.center = ((1455+(310/2)), (200+(50/2)))
-            screen.blit(textSurf, textRect)
+            button("GO!", 1455, 200, 310, 50, green, light_green, screen)
+            button("Quit!", 1455, 400, 310, 50, red, light_red, screen)
 
             pygame.display.flip()
 
