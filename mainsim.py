@@ -84,11 +84,14 @@ def thousandCircle(num):
     else:
         return num
 
-def button(msg, x, y, w, h, ic, ac, screen):
+def button(msg, x, y, w, h, ic, ac, screen, action = None):
     mouse = pygame.mouse.get_pos()
+    click = pygame.mouse.get_pressed()
 
     if (x+w) > mouse[0] > x and (y+h) > mouse[1] > y:
         pygame.draw.rect(screen, ac, (x, y, w, h))
+        if click[0] == 1 and action != None:
+            action()
     else:
         pygame.draw.rect(screen, ic, (x, y, w, h))
 
@@ -96,6 +99,10 @@ def button(msg, x, y, w, h, ic, ac, screen):
     textSurf, textRect = text_objects(msg, smallText)
     textRect.center = ((x+(w/2)), (y+(h/2)))
     screen.blit(textSurf, textRect)
+
+def quitgame():
+    pygame.quit()
+    quit()
 
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
@@ -439,7 +446,7 @@ class matrix():
             pygame.draw.rect(screen, white, (xSize+1, 0, 1920-xSize, 1080))
 
             button("GO!", 1455, 200, 310, 50, green, light_green, screen)
-            button("Quit!", 1455, 400, 310, 50, red, light_red, screen)
+            button("Quit!", 1455, 400, 310, 50, red, light_red, screen, quitgame)
 
             pygame.display.flip()
 
