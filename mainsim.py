@@ -25,6 +25,7 @@ light_red = [255, 0, 0]
 green = [0, 200, 0]
 light_green = [0, 255, 0]
 blue = [0, 0, 200]
+light_blue = [0, 0, 255]
 yellow = [255, 255, 0]
 white = [255, 255, 255]
 
@@ -32,7 +33,7 @@ os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
 myFont = pygame.font.SysFont("arial", 15)
 sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
 clock = pygame.time.Clock()
-FPS = 60
+FPS = 10
 seed = 5
 screenSizeY = 1080
 screenSizeX = 1920
@@ -84,14 +85,17 @@ def thousandCircle(num):
     else:
         return num
 
-def button(msg, x, y, w, h, ic, ac, screen, action = None):
+def button(msg, x, y, w, h, ic, ac, screen, action = None, p1 = None):
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
 
     if (x+w) > mouse[0] > x and (y+h) > mouse[1] > y:
         pygame.draw.rect(screen, ac, (x, y, w, h))
         if click[0] == 1 and action != None:
-            action()
+            if p1 != None:
+                p1 = action(p1)
+            else:
+                action()
     else:
         pygame.draw.rect(screen, ic, (x, y, w, h))
 
@@ -99,10 +103,22 @@ def button(msg, x, y, w, h, ic, ac, screen, action = None):
     textSurf, textRect = text_objects(msg, smallText)
     textRect.center = ((x+(w/2)), (y+(h/2)))
     screen.blit(textSurf, textRect)
+    if p1 != None:
+        return p1
 
 def quitgame():
     pygame.quit()
     quit()
+
+def timeup(t):
+    if t < 29:
+        t += 1
+    return t
+
+def timedown(t):
+    if t > 0:
+        t -= 1
+    return t
 
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
@@ -447,8 +463,11 @@ class matrix():
 
             button("GO!", 1455, 200, 310, 50, green, light_green, screen)
             button("Quit!", 1455, 400, 310, 50, red, light_red, screen, quitgame)
+            t = button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
+            t = button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
 
             pygame.display.flip()
+            clock.tick(FPS)
 
 def run(config_path):
     """
