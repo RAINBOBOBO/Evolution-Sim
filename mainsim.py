@@ -33,7 +33,7 @@ os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
 myFont = pygame.font.SysFont("arial", 15)
 sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
 clock = pygame.time.Clock()
-FPS = 10
+FPS = 60
 seed = 5
 screenSizeY = 1080
 screenSizeX = 1920
@@ -85,27 +85,6 @@ def thousandCircle(num):
     else:
         return num
 
-def button(msg, x, y, w, h, ic, ac, screen, action = None, p1 = None):
-    mouse = pygame.mouse.get_pos()
-    click = pygame.mouse.get_pressed()
-
-    if (x+w) > mouse[0] > x and (y+h) > mouse[1] > y:
-        pygame.draw.rect(screen, ac, (x, y, w, h))
-        if click[0] == 1 and action != None:
-            if p1 != None:
-                p1 = action(p1)
-            else:
-                action()
-    else:
-        pygame.draw.rect(screen, ic, (x, y, w, h))
-
-    smallText = pygame.font.SysFont("arial", 20)
-    textSurf, textRect = text_objects(msg, smallText)
-    textRect.center = ((x+(w/2)), (y+(h/2)))
-    screen.blit(textSurf, textRect)
-    if p1 != None:
-        return p1
-
 def quitgame():
     pygame.quit()
     quit()
@@ -123,6 +102,35 @@ def timedown(t):
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
     return textSurface, textSurface.get_rect()
+
+class buttonClass():
+    #idea: when mouse down, wait for mouse up, then start a timer for when it can click again, maybe 
+    def __init__(self, buttonID):
+        self.id = buttonID
+        self.mouseDown = False
+
+    def button(self, msg, x, y, w, h, ic, ac, screen, action = None, p1 = None):
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if (x+w) > mouse[0] > x and (y+h) > mouse[1] > y:
+            pygame.draw.rect(screen, ac, (x, y, w, h))
+            if click[0] == 1:
+                self.mouseDown = True
+            if self.mouseDown == True and action != None and click[0] == 0:
+                self.mouseDown = False
+                if p1 != None:
+                    p1 = action(p1)
+                else:
+                    action()
+        else:
+            pygame.draw.rect(screen, ic, (x, y, w, h))
+
+        smallText = pygame.font.SysFont("arial", 20)
+        textSurf, textRect = text_objects(msg, smallText)
+        textRect.center = ((x+(w/2)), (y+(h/2)))
+        screen.blit(textSurf, textRect)
+        if p1 != None:
+            return p1
 
 class water():
     def __init__(self):
@@ -407,6 +415,12 @@ class matrix():
 
         state = 2
         t=0
+
+        button_go = buttonClass("go")
+        button_quit = buttonClass("quit")
+        button_tUp = buttonClass("tUp")
+        button_tDown = buttonClass("tDown")
+
         while state == 2:
             mouse = pygame.mouse.get_pos()
             for event in pygame.event.get():
@@ -461,10 +475,10 @@ class matrix():
             #Sidebar drawing
             pygame.draw.rect(screen, white, (xSize+1, 0, 1920-xSize, 1080))
 
-            button("GO!", 1455, 200, 310, 50, green, light_green, screen)
-            button("Quit!", 1455, 400, 310, 50, red, light_red, screen, quitgame)
-            t = button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
-            t = button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
+            button_go.button("GO!", 1455, 200, 310, 50, green, light_green, screen)
+            button_quit.button("Quit!", 1455, 400, 310, 50, red, light_red, screen, quitgame)
+            t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
+            t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
 
             pygame.display.flip()
             clock.tick(FPS)
