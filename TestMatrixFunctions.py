@@ -90,5 +90,4 @@ while state == 1:  # sim
             matrix.move_Check(creer, xDist, yDist, time)
 
     state = 2
-
-matrix.show_Matrix(size[0], size[1], maxTime)
+stateHandler(matrix, size[0], size[1], maxTime)

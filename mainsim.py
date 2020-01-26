@@ -28,6 +28,7 @@ blue = [0, 0, 200]
 light_blue = [0, 0, 255]
 yellow = [255, 255, 0]
 white = [255, 255, 255]
+menu_blue = [0, 100, 200]
 
 os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
 myFont = pygame.font.SysFont("arial", 15)
@@ -99,9 +100,52 @@ def timedown(t):
         t -= 1
     return t
 
+def changeState1(state):
+    state = 1
+    return state
+
+def changeState2(state):
+    state = 2
+    return state
+
+def stateHandler(matrix, x, y, time):
+    done = False
+    state = 1
+    while done == False:
+        if state == 1:
+            state = menu()
+        elif state == 2:
+            state = matrix.show_Matrix(x, y, time)
+        elif state == 3:
+            done == True
+
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
     return textSurface, textSurface.get_rect()
+
+def menu():
+    screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME | pygame.FULLSCREEN)
+    state = 1
+
+    button_start = buttonClass("start")
+
+    while state == 1:
+        for event in pygame.event.get():
+            key = pygame.key.get_pressed()
+            if event.type == pygame.QUIT:
+                sys.exit()
+            if key[pygame.K_q]:
+                quitgame()
+        mouse = pygame.mouse.get_pos()
+        pygame.draw.rect(screen, menu_blue, (0, 0, 1920, 1080))
+
+        state = button_start.button("Start", 640, 360, 300, 50, blue, light_blue, screen, changeState2, state)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+    return 2
+
+
 
 class buttonClass():
     #idea: when mouse down, wait for mouse up, then start a timer for when it can click again, maybe 
@@ -480,8 +524,15 @@ class matrix():
             t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
             t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
 
+            #displaying stats
+            timeText = pygame.font.SysFont("arial", 20)
+            textSurf, textRect = text_objects(str(t), timeText)
+            textRect.center = (1900, 1060)
+            screen.blit(textSurf, textRect)
+
             pygame.display.flip()
             clock.tick(FPS)
+        return 3
 
 def run(config_path):
     """
