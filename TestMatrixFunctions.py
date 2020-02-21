@@ -91,3 +91,5 @@ while state == 1:  # sim
 
     state = 2
 stateHandler(matrix, size[0], size[1], maxTime)
+
+#note: for menu, make little creatures be seeking food in the background of the menu 

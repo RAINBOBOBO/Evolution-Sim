@@ -100,6 +100,10 @@ def timedown(t):
         t -= 1
     return t
 
+def changeState0(state):
+    state = 0
+    return state
+
 def changeState1(state):
     state = 1
     return state
@@ -107,6 +111,14 @@ def changeState1(state):
 def changeState2(state):
     state = 2
     return state
+
+def setTrue(state):
+    state = True
+    return
+
+def setFalse(state):
+    state = False
+    return
 
 def stateHandler(matrix, x, y, time):
     done = False
@@ -128,6 +140,7 @@ def menu():
     state = 1
 
     button_start = buttonClass("start")
+    button_menu_quit = buttonClass("menuQuit")
 
     while state == 1:
         for event in pygame.event.get():
@@ -137,18 +150,59 @@ def menu():
             if key[pygame.K_q]:
                 quitgame()
         mouse = pygame.mouse.get_pos()
-        pygame.draw.rect(screen, menu_blue, (0, 0, 1920, 1080))
+        screen.fill(menu_blue)
+        largeText = pygame.font.SysFont("arial", 115)
+        textSurf, textRect = text_objects('Evolution Simulator', largeText)
+        textRect.center = ((1920/2), (1080/2))
+        screen.blit(textSurf, textRect)
 
-        state = button_start.button("Start", 640, 360, 300, 50, blue, light_blue, screen, changeState2, state)
+        state = button_start.button("Start", 810, 695, 300, 50, blue, light_blue, screen, changeState2, state)
+        button_menu_quit.button("Quit", 810, 770, 300, 50, red, light_red, screen, quitgame)
 
         pygame.display.flip()
         clock.tick(FPS)
-    return 2
+    return state
 
+class sliderClass():
+    def __init__(self, sliderID, x, y, w, h, ac, screen, p1):
+        self.id = sliderID
+        self.mouseDown = False
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.ac = ac
+        self.screen = screen
+        self.p1 = p1
+        self.sliderX = self.x + 120
+        self.clickX = 0
+
+
+    def slider(self, maxX, maxY):
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        print(click[0])
+
+        if (self.sliderX + 5) > mouse[0] > (self.sliderX) and (self.y+10) > mouse[1] > self.y:
+            if click[0] == 1:
+                self.clickX = mouse[0]
+                self.mouseDown = True
+        if self.mouseDown and self.x < self.sliderX < (self.x + self.w):
+            self.sliderX = mouse[0]
+        if self.mouseDown == True and click[0] == 0:
+            self.mouseDown = False
+        if self.sliderX <= self.x:
+            self.sliderX = self.x + 5
+        elif self.sliderX >= (self.x + self.w):
+            self.sliderX = (self.x + self.w) - 10
+        
+        pygame.draw.rect(self.screen, self.ac, (self.x, self.y, 5, 10))                         #left bar
+        pygame.draw.rect(self.screen, self.ac, (self.sliderX, self.y, 5, 10))                   #slider bar
+        pygame.draw.rect(self.screen, self.ac, ((self.x + self.w - 5), self.y, 5, 10))          #right bar
+        pygame.draw.rect(self.screen, self.ac, (self.x, self.y + 3, self.w, 3))                 #long bar
 
 
 class buttonClass():
-    #idea: when mouse down, wait for mouse up, then start a timer for when it can click again, maybe 
     def __init__(self, buttonID):
         self.id = buttonID
         self.mouseDown = False
@@ -451,6 +505,8 @@ class matrix():
     def show_Matrix(self, xSize, ySize, maxTime):
         selected = None
         cursorX = cursorY = 0
+        play = 0
+        a = 0
 
         xScale = math.ceil(xSize/self.maxX)
         yScale = math.ceil(ySize/self.maxY)
@@ -460,10 +516,15 @@ class matrix():
         state = 2
         t=0
 
-        button_go = buttonClass("go")
+        button_play = buttonClass("play")
+        button_pause = buttonClass("pause")
+        button_back = buttonClass("back")
         button_quit = buttonClass("quit")
         button_tUp = buttonClass("tUp")
         button_tDown = buttonClass("tDown")
+        button_menu = buttonClass("menu")
+
+        slider_time = sliderClass("time", 1455, 380, 310, 50, green, screen, t)
 
         while state == 2:
             mouse = pygame.mouse.get_pos()
@@ -516,13 +577,25 @@ class matrix():
                         pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
                     elif type(self.matrix[x, y, t]) == food:
                         pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
-            #Sidebar drawing
-            pygame.draw.rect(screen, white, (xSize+1, 0, 1920-xSize, 1080))
+            #sidebar drawing
+            pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
 
-            button_go.button("GO!", 1455, 200, 310, 50, green, light_green, screen)
-            button_quit.button("Quit!", 1455, 400, 310, 50, red, light_red, screen, quitgame)
+            #buttons
+            play = button_play.button("Play", 1455, 200, 310, 50, green, light_green, screen, changeState1, play)
+            play = button_pause.button("Pause", 1455, 260, 310, 50, green, light_green, screen, changeState0, play)
+            t = button_back.button("Back", 1455, 320, 310, 50, green, light_green, screen, changeState0, t)
             t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
             t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
+            slider_time.slider(self.maxX, self.maxY)
+            state = button_menu.button("Menu", 1455, 960, 310, 50, menu_blue, light_blue, screen, changeState1, state)
+            button_quit.button("Quit", 1455, 1020, 310, 50, red, light_red, screen, quitgame)
+
+            #when play button is pressed
+            if play == 1 and t < (maxTime-1):
+                a += 1
+                if a >= 50:
+                    a = 0
+                    t += 1
 
             #displaying stats
             timeText = pygame.font.SysFont("arial", 20)
@@ -532,7 +605,7 @@ class matrix():
 
             pygame.display.flip()
             clock.tick(FPS)
-        return 3
+        return state
 
 def run(config_path):
     """
