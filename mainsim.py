@@ -164,7 +164,7 @@ def menu():
     return state
 
 class sliderClass():
-    def __init__(self, sliderID, x, y, w, h, ac, screen, p1):
+    def __init__(self, sliderID, x, y, w, h, barWidth, ac, screen, p1):
         self.id = sliderID
         self.mouseDown = False
         self.x = x
@@ -174,32 +174,39 @@ class sliderClass():
         self.ac = ac
         self.screen = screen
         self.p1 = p1
-        self.sliderX = self.x + 120
-        self.clickX = 0
-
+        self.barWidth = barWidth
+        self.sliderX = self.x + self.barWidth
+        self.initialX = self.sliderX
 
     def slider(self, maxX, maxY):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
-        print(click[0])
 
-        if (self.sliderX + 5) > mouse[0] > (self.sliderX) and (self.y+10) > mouse[1] > self.y:
+        if (self.x + self.w) > mouse[0] > (self.x) and (self.y+self.h) > mouse[1] > self.y:
             if click[0] == 1:
-                self.clickX = mouse[0]
                 self.mouseDown = True
         if self.mouseDown and self.x < self.sliderX < (self.x + self.w):
             self.sliderX = mouse[0]
         if self.mouseDown == True and click[0] == 0:
             self.mouseDown = False
         if self.sliderX <= self.x:
-            self.sliderX = self.x + 5
+            self.sliderX = self.x + self.barWidth
         elif self.sliderX >= (self.x + self.w):
             self.sliderX = (self.x + self.w) - 10
+
+        self.p1 = round((self.sliderX - self.x)/(self.w - 10) + 1, 2)
         
-        pygame.draw.rect(self.screen, self.ac, (self.x, self.y, 5, 10))                         #left bar
-        pygame.draw.rect(self.screen, self.ac, (self.sliderX, self.y, 5, 10))                   #slider bar
-        pygame.draw.rect(self.screen, self.ac, ((self.x + self.w - 5), self.y, 5, 10))          #right bar
-        pygame.draw.rect(self.screen, self.ac, (self.x, self.y + 3, self.w, 3))                 #long bar
+        pygame.draw.rect(self.screen, self.ac, (self.x, self.y, self.barWidth, self.h))                             #left bar
+        pygame.draw.rect(self.screen, self.ac, (self.sliderX, self.y, self.barWidth, self.h))                       #slider bar
+        pygame.draw.rect(self.screen, self.ac, ((self.x + self.w - self.barWidth), self.y, self.barWidth, self.h))  #right bar
+        pygame.draw.rect(self.screen, self.ac, (self.x, self.y + (self.h/2), self.w, (self.h/6)))                   #long bar
+
+        timeText = pygame.font.SysFont("arial", 15)
+        textSurf, textRect = text_objects(str(self.p1), timeText)
+        textRect.center = ((self.x + self.w - self.barWidth) + 20, self.y + 10)
+        self.screen.blit(textSurf, textRect)
+
+        return self.p1
 
 
 class buttonClass():
@@ -507,6 +514,7 @@ class matrix():
         cursorX = cursorY = 0
         play = 0
         a = 0
+        playSpeed = 1
 
         xScale = math.ceil(xSize/self.maxX)
         yScale = math.ceil(ySize/self.maxY)
@@ -524,7 +532,7 @@ class matrix():
         button_tDown = buttonClass("tDown")
         button_menu = buttonClass("menu")
 
-        slider_time = sliderClass("time", 1455, 380, 310, 50, green, screen, t)
+        slider_time = sliderClass("time", 1455, 380, 310, 20, 5, green, screen, playSpeed)
 
         while state == 2:
             mouse = pygame.mouse.get_pos()
@@ -586,13 +594,13 @@ class matrix():
             t = button_back.button("Back", 1455, 320, 310, 50, green, light_green, screen, changeState0, t)
             t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
             t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
-            slider_time.slider(self.maxX, self.maxY)
+            playSpeed = slider_time.slider(self.maxX, self.maxY)
             state = button_menu.button("Menu", 1455, 960, 310, 50, menu_blue, light_blue, screen, changeState1, state)
             button_quit.button("Quit", 1455, 1020, 310, 50, red, light_red, screen, quitgame)
 
             #when play button is pressed
             if play == 1 and t < (maxTime-1):
-                a += 1
+                a += playSpeed
                 if a >= 50:
                     a = 0
                     t += 1
