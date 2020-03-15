@@ -120,6 +120,10 @@ def setFalse(state):
     state = False
     return
 
+def setNone(state):
+    state = None
+    return state
+
 def stateHandler(matrix, x, y, time):
     done = False
     state = 1
@@ -150,12 +154,15 @@ def menu():
             if key[pygame.K_q]:
                 quitgame()
         mouse = pygame.mouse.get_pos()
+
+        #drawing the menu elements
         screen.fill(menu_blue)
         largeText = pygame.font.SysFont("arial", 115)
         textSurf, textRect = text_objects('Evolution Simulator', largeText)
         textRect.center = ((1920/2), (1080/2))
         screen.blit(textSurf, textRect)
 
+        #menu buttons
         state = button_start.button("Start", 810, 695, 300, 50, blue, light_blue, screen, changeState2, state)
         button_menu_quit.button("Quit", 810, 770, 300, 50, red, light_red, screen, quitgame)
 
@@ -182,6 +189,7 @@ class sliderClass():
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
 
+        #checking if mouse is in positon and clicking
         if (self.x + self.w) > mouse[0] > (self.x) and (self.y+self.h) > mouse[1] > self.y:
             if click[0] == 1:
                 self.mouseDown = True
@@ -194,13 +202,16 @@ class sliderClass():
         elif self.sliderX >= (self.x + self.w):
             self.sliderX = (self.x + self.w) - 10
 
+        #changing the value based on slider pos
         self.p1 = round((self.sliderX - self.x)/(self.w - 10) + 1, 2)
         
+        #drawing the slider
         pygame.draw.rect(self.screen, self.ac, (self.x, self.y, self.barWidth, self.h))                             #left bar
         pygame.draw.rect(self.screen, self.ac, (self.sliderX, self.y, self.barWidth, self.h))                       #slider bar
         pygame.draw.rect(self.screen, self.ac, ((self.x + self.w - self.barWidth), self.y, self.barWidth, self.h))  #right bar
         pygame.draw.rect(self.screen, self.ac, (self.x, self.y + (self.h/2), self.w, (self.h/6)))                   #long bar
 
+        #drawing the value for the slider
         timeText = pygame.font.SysFont("arial", 15)
         textSurf, textRect = text_objects(str(self.p1), timeText)
         textRect.center = ((self.x + self.w - self.barWidth) + 20, self.y + 10)
@@ -217,6 +228,8 @@ class buttonClass():
     def button(self, msg, x, y, w, h, ic, ac, screen, action = None, p1 = None):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
+
+        #check if mouse is in position
         if (x+w) > mouse[0] > x and (y+h) > mouse[1] > y:
             pygame.draw.rect(screen, ac, (x, y, w, h))
             if click[0] == 1:
@@ -230,10 +243,13 @@ class buttonClass():
         else:
             pygame.draw.rect(screen, ic, (x, y, w, h))
 
+        #drawing the text on the button
         smallText = pygame.font.SysFont("arial", 20)
         textSurf, textRect = text_objects(msg, smallText)
         textRect.center = ((x+(w/2)), (y+(h/2)))
         screen.blit(textSurf, textRect)
+
+        #return only if we have something to return
         if p1 != None:
             return p1
 
@@ -304,7 +320,7 @@ class creature():
         else:
             self.food += 1
 
-    def add_health(self, amt = None):
+    def add_health(self, amt = None): 
         if amt != None:
             self.health += amt
         else:
@@ -323,7 +339,8 @@ class creature():
                         vis[y, x] = world[x, y, time]
         return vis
 
-    def process_vis(self, vis, maxX, maxY): #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
+    def process_vis(self, world, time, maxX, maxY): #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
+        vis = self.get_vis(world, time, maxX, maxY)
         newVis = []
         x = (self.x - 1)
         y = (self.y - 1)
@@ -499,14 +516,16 @@ class matrix():
     def next_Second(self):
         pass
 
-    def show_Vision(self, vis, maxX, maxY, time):
+    def show_Vision(self, xPos, yPos, vis, maxX, maxY, time, screen):
+        xScale =  math.ceil(600/self.maxX)
+        yScale =  math.ceil(600/self.maxY)
         for x in range(maxX):
             for y in range(maxY):
-                if type(vis[x, y, time]) == water:
+                if type(vis[x, y]) == water:
+                    pygame.draw.rect(screen, blue, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
+                elif type(vis[x, y]) == creature:
                     pass
-                elif type(vis[x, y, time]) == creature:
-                    pass
-                elif type(vis[x, y, time]) == void:
+                elif type(vis[x, y]) == void:
                     pass
 
     def show_Matrix(self, xSize, ySize, maxTime):
@@ -524,6 +543,7 @@ class matrix():
         state = 2
         t=0
 
+        #defining buttons
         button_play = buttonClass("play")
         button_pause = buttonClass("pause")
         button_back = buttonClass("back")
@@ -531,6 +551,7 @@ class matrix():
         button_tUp = buttonClass("tUp")
         button_tDown = buttonClass("tDown")
         button_menu = buttonClass("menu")
+        button_unselect = buttonClass("unselect")
 
         slider_time = sliderClass("time", 1455, 380, 310, 20, 5, green, screen, playSpeed)
 
@@ -552,8 +573,8 @@ class matrix():
                     state = 1
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if mouse[0] <= xSize and mouse[1] <= ySize:
-                        cursorX = math.floor(mouse[0])
-                        cursorY = math.floor(mouse[1])
+                        cursorX = math.floor(mouse[0]/xScale)
+                        cursorY = math.floor(mouse[1]/yScale)
                         print(cursorX, cursorY)
 
                         creatureIndex = 0
@@ -565,17 +586,9 @@ class matrix():
                         if selected == None:
                             print("nothing selected at", cursorX, cursorY)
                         else:
-                            print("creature tag:", selected.tag, " speed:", selected.speed, " food:", selected.food, " health:", selected.health)
-                            print(selected.process_vis(selected.get_vis(self.matrix, t, self.maxX, self.maxY), self.maxX, self.maxY))
-                            
+                            print("creature tag:", selected.tag, " speed:", selected.speed, " food:", selected.food, " health:", selected.health, "time:", t)
+                            print(selected.process_vis(self.matrix, t, self.maxX, self.maxY))
 
-                # if bob.health > 0:
-                #    if key[pygame.K_SPACE]:
-                #        copier = bob.get_vis(world, t)
-                #        print(copier)
-                #        visual = bob.process_vis(copier)
-                #        print(visual)
-                # keep this as a template
             #matrix drawing
             for x in range(self.maxX):
                 for y in range(self.maxY):
@@ -589,27 +602,38 @@ class matrix():
             pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
 
             #buttons
-            play = button_play.button("Play", 1455, 200, 310, 50, green, light_green, screen, changeState1, play)
-            play = button_pause.button("Pause", 1455, 260, 310, 50, green, light_green, screen, changeState0, play)
-            t = button_back.button("Back", 1455, 320, 310, 50, green, light_green, screen, changeState0, t)
-            t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
-            t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
-            playSpeed = slider_time.slider(self.maxX, self.maxY)
-            state = button_menu.button("Menu", 1455, 960, 310, 50, menu_blue, light_blue, screen, changeState1, state)
-            button_quit.button("Quit", 1455, 1020, 310, 50, red, light_red, screen, quitgame)
+            if selected == None:
+                play = button_play.button("Play", 1455, 200, 310, 50, green, light_green, screen, changeState1, play)
+                play = button_pause.button("Pause", 1455, 260, 310, 50, green, light_green, screen, changeState0, play)
+                t = button_back.button("Back", 1455, 320, 310, 50, green, light_green, screen, changeState0, t)
+                t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
+                t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
+                playSpeed = slider_time.slider(self.maxX, self.maxY)
+                state = button_menu.button("Menu", 1455, 960, 310, 50, menu_blue, light_blue, screen, changeState1, state)
+                button_quit.button("Quit", 1455, 1020, 310, 50, red, light_red, screen, quitgame)
 
-            #when play button is pressed
-            if play == 1 and t < (maxTime-1):
-                a += playSpeed
-                if a >= 50:
-                    a = 0
-                    t += 1
+                #when play button is pressed
+                if play == 1 and t < (maxTime-1):
+                    a += playSpeed
+                    if a >= 50:
+                        a = 0
+                        t += 1
 
-            #displaying stats
-            timeText = pygame.font.SysFont("arial", 20)
-            textSurf, textRect = text_objects(str(t), timeText)
-            textRect.center = (1900, 1060)
-            screen.blit(textSurf, textRect)
+                #displaying stats
+                timeText = pygame.font.SysFont("arial", 20)
+                textSurf, textRect = text_objects(str(t), timeText)
+                textRect.center = (1900, 1060)
+                screen.blit(textSurf, textRect)
+            else:
+                selectedText = pygame.font.SysFont("arial", 20)
+                textSurf, textRect = text_objects("creature tag:" + (str(selected.tag) + ", speed:" + str(selected.speed) + ", food:" + str(selected.food) + ", health:" + str(selected.health)) + " at t = " + str(t),  selectedText)
+                textRect.center = (1550, 200)
+                screen.blit(textSurf, textRect)
+
+                tempVis = selected.get_vis(self.matrix, t, self.maxX, self.maxY)
+                self.show_Vision(1320, 600, tempVis, self.maxX, self.maxY, t, screen)
+
+                selected = button_unselect.button("Back", 1455, 400, 310, 50, green, light_green, screen, setNone, selected)
 
             pygame.display.flip()
             clock.tick(FPS)
