@@ -1,11 +1,15 @@
 import sys
 import pygame
+from pygame.locals import *
 import os
 import numpy as np
 import neat
 from abc import ABC, abstractmethod
 from fractions import Fraction
+import mainsim
+from mainsim import *
 import math
+import datetime
 
 # import tensorflow as tf
 # from tensorflow.keras import layers
@@ -26,6 +30,8 @@ green = [0, 200, 0]
 light_green = [0, 255, 0]
 blue = [0, 0, 200]
 light_blue = [0, 0, 255]
+orange = [200, 110, 0]
+light_orange = [255, 110, 0]
 yellow = [255, 255, 0]
 white = [255, 255, 255]
 menu_blue = [0, 100, 200]
@@ -35,10 +41,8 @@ myFont = pygame.font.SysFont("arial", 15)
 sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
 clock = pygame.time.Clock()
 FPS = 60
-seed = 5
 screenSizeY = 1080
 screenSizeX = 1920
-np.random.seed(seed)
 
 
 def dec():
@@ -112,6 +116,10 @@ def changeState2(state):
     state = 2
     return state
 
+def changeState3(state):
+    state = 3
+    return state
+
 def setTrue(state):
     state = True
     return
@@ -133,7 +141,8 @@ def stateHandler(matrix, x, y, time):
         elif state == 2:
             state = matrix.show_Matrix(x, y, time)
         elif state == 3:
-            done == True
+            done = True
+    return
 
 def text_objects(text, font):
     textSurface = font.render(text, True, black)
@@ -170,7 +179,7 @@ def menu():
         clock.tick(FPS)
     return state
 
-class sliderClass():
+class sliderClass:
     def __init__(self, sliderID, x, y, w, h, barWidth, ac, screen, p1):
         self.id = sliderID
         self.mouseDown = False
@@ -220,7 +229,7 @@ class sliderClass():
         return self.p1
 
 
-class buttonClass():
+class buttonClass:
     def __init__(self, buttonID):
         self.id = buttonID
         self.mouseDown = False
@@ -253,15 +262,15 @@ class buttonClass():
         if p1 != None:
             return p1
 
-class water():
+class water:
     def __init__(self):
         pass
 
-class void():
+class void:
     def __init__(self):
         pass
 
-class food():
+class food:
     def __init__(self, x, y, edibility = None):
         self.x = x
         self.y = y
@@ -271,7 +280,7 @@ class food():
     def get_Pos(self):
         return self.pos
 
-class creature():
+class creature:
     def __init__(self, tag = None, speed = None, food = None, health = None, sight = None, actionPoints = None, digestibility = None, digestRange = None, x = None, y = None):
         self.tag = tag
         self.speed = speed
@@ -283,24 +292,6 @@ class creature():
         self.digestRange = digestRange
         self.x = x
         self.y = y
-
-    def get_Body(self):
-        return self
-
-    def get_speed(self):
-        return self.speed
-
-    def get_food(self):
-        return self.food
-
-    def get_health(self):
-        return self.health
-
-    def get_sight(self):
-        return self.sight
-
-    def get_actionPoints(self):
-        return self.actionPoints
 
     def moveX(self, amt = None):
         if (amt):
@@ -326,21 +317,21 @@ class creature():
         else:
             self.health += 1
 
-    def get_vis(self, world, time, maxX, maxY): #this function is so we have a uniform, square table to work w/ (including out of bounds)
-        vis = np.full((maxX, maxY), water())
-        relLeft = (self.x - self.sight)
-        relRight = (self.x + self.sight)
-        relUp = (self.y - self.sight)
-        relDown = (self.y + self.sight)
+    def get_vis(self, world, time, maxX, maxY, creatureX, creatureY): #this function is so we have a uniform, square table to work w/ (including out of bounds)
+        vis = np.full((maxX, maxY), void()) #check if this should be void, not water... wat de fak?
+        relLeft = (creatureX - self.sight)
+        relRight = (creatureX + self.sight)
+        relUp = (creatureY - self.sight)
+        relDown = (creatureY + self.sight)
         for x in range(maxX):
             for y in range(maxY):
                 if x >= relLeft and x <= relRight and y >= relUp and y <= relDown:
                     if x >= 0 and x < maxX and y >= 0 and y < maxY:
-                        vis[y, x] = world[x, y, time]
+                        vis[x, y] = world[x, y, time]
         return vis
 
-    def process_vis(self, world, time, maxX, maxY): #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
-        vis = self.get_vis(world, time, maxX, maxY)
+    def process_vis(self, world, time, maxX, maxY, creatureX, creatureY): #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
+        vis = self.get_vis(world, time, maxX, maxY, creatureX, creatureY)
         newVis = []
         x = (self.x - 1)
         y = (self.y - 1)
@@ -350,28 +341,28 @@ class creature():
                 if looper == 0:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
-                            newVis.append(vis[y, x])
+                            newVis.append(vis[x, y])
                         else:
                             newVis.append(void())
                         x += 1
                 elif looper == 1:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
-                            newVis.append(vis[y, x])
+                            newVis.append(vis[x, y])
                         else:
                             newVis.append(void())
                         y += 1
                 elif looper == 2:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
-                            newVis.append(vis[y, x])
+                            newVis.append(vis[x, y])
                         else:
                             newVis.append(void())
                         x -= 1
                 elif looper == 3:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
-                            newVis.append(vis[y, x])
+                            newVis.append(vis[x, y])
                         else:
                             newVis.append(void())
                         y -= 1
@@ -380,7 +371,7 @@ class creature():
                     sideLen += 2
         return newVis
 
-class creatureTagger():
+class creatureTagger:
     def __init__(self):
         self.currentTag = 0
 
@@ -388,7 +379,7 @@ class creatureTagger():
         self.currentTag += 1
         return self.currentTag
 
-class matrix():
+class matrix:
     def __init__(self, maxX = 1, maxY = 1, maxTime = 1):
         self.maxX = maxX
         self.maxY = maxY
@@ -524,12 +515,15 @@ class matrix():
                 if type(vis[x, y]) == water:
                     pygame.draw.rect(screen, blue, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
                 elif type(vis[x, y]) == creature:
-                    pass
+                    pygame.draw.rect(screen, yellow, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
+                elif type(vis[x, y]) == food:
+                    pygame.draw.rect(screen, green, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
                 elif type(vis[x, y]) == void:
-                    pass
+                    pygame.draw.rect(screen, red, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
 
     def show_Matrix(self, xSize, ySize, maxTime):
         selected = None
+        prevSelected = None
         cursorX = cursorY = 0
         play = 0
         a = 0
@@ -542,6 +536,7 @@ class matrix():
 
         state = 2
         t=0
+        prevT = None
 
         #defining buttons
         button_play = buttonClass("play")
@@ -552,6 +547,7 @@ class matrix():
         button_tDown = buttonClass("tDown")
         button_menu = buttonClass("menu")
         button_unselect = buttonClass("unselect")
+        button_nextGen = buttonClass("nextGen")
 
         slider_time = sliderClass("time", 1455, 380, 310, 20, 5, green, screen, playSpeed)
 
@@ -575,7 +571,6 @@ class matrix():
                     if mouse[0] <= xSize and mouse[1] <= ySize:
                         cursorX = math.floor(mouse[0]/xScale)
                         cursorY = math.floor(mouse[1]/yScale)
-                        print(cursorX, cursorY)
 
                         creatureIndex = 0
                         for selector in self.creatures:
@@ -587,28 +582,52 @@ class matrix():
                             print("nothing selected at", cursorX, cursorY)
                         else:
                             print("creature tag:", selected.tag, " speed:", selected.speed, " food:", selected.food, " health:", selected.health, "time:", t)
-                            print(selected.process_vis(self.matrix, t, self.maxX, self.maxY))
+                            #print(selected.process_vis(self.matrix, t, self.maxX, self.maxY, cursorX, cursorY))
 
             #matrix drawing
-            for x in range(self.maxX):
-                for y in range(self.maxY):
-                    if type(self.matrix[x, y, t]) == water:
-                        pygame.draw.rect(screen, blue, (x * xScale, y * yScale, xScale, yScale))
-                    elif type(self.matrix[x, y, t]) == creature:
-                        pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
-                    elif type(self.matrix[x, y, t]) == food:
-                        pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
-            #sidebar drawing
-            pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
+            if prevT != None and prevT != t:
+                for x in range(self.maxX):
+                    for y in range(self.maxY):
+                        if type(self.matrix[x, y, t]) == water:
+                            pygame.draw.rect(screen, blue, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, t]) == creature:
+                            pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, t]) == food:
+                            pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
+            if prevT == None:
+                for x in range(self.maxX):
+                    for y in range(self.maxY):
+                        if type(self.matrix[x, y, 0]) == water:
+                            pygame.draw.rect(screen, blue, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, 0]) == creature:
+                            pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, 0]) == food:
+                            pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
 
+            if selected != None:
+                if prevSelected == None or prevSelected != selected:
+                    pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
+                    selectedText = pygame.font.SysFont("arial", 20)
+                    textSurf, textRect = text_objects("creature tag:" + (str(selected.tag) + ", speed:" + str(selected.speed) + ", food:" + str(selected.food) + ", health:" + str(selected.health)) + " at t = " + str(t) + ", (" + str(cursorX) + "," + str(cursorY) + ")",  selectedText)
+                    textRect.center = (1580, 200)
+                    screen.blit(textSurf, textRect)
+
+                    tempVis = selected.get_vis(self.matrix, t, self.maxX, self.maxY, cursorX, cursorY)
+                    
+                    self.show_Vision(1320, 480, tempVis, self.maxX, self.maxY, t, screen)
+
+            prevT = t
+            
             #buttons
             if selected == None:
+                pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
                 play = button_play.button("Play", 1455, 200, 310, 50, green, light_green, screen, changeState1, play)
                 play = button_pause.button("Pause", 1455, 260, 310, 50, green, light_green, screen, changeState0, play)
                 t = button_back.button("Back", 1455, 320, 310, 50, green, light_green, screen, changeState0, t)
                 t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
                 t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
                 playSpeed = slider_time.slider(self.maxX, self.maxY)
+                state = button_nextGen.button("New Generation", 1455, 900, 310, 50, orange, light_orange, screen, changeState3, state)
                 state = button_menu.button("Menu", 1455, 960, 310, 50, menu_blue, light_blue, screen, changeState1, state)
                 button_quit.button("Quit", 1455, 1020, 310, 50, red, light_red, screen, quitgame)
 
@@ -624,24 +643,52 @@ class matrix():
                 textSurf, textRect = text_objects(str(t), timeText)
                 textRect.center = (1900, 1060)
                 screen.blit(textSurf, textRect)
+                
             else:
-                selectedText = pygame.font.SysFont("arial", 20)
-                textSurf, textRect = text_objects("creature tag:" + (str(selected.tag) + ", speed:" + str(selected.speed) + ", food:" + str(selected.food) + ", health:" + str(selected.health)) + " at t = " + str(t),  selectedText)
-                textRect.center = (1550, 200)
-                screen.blit(textSurf, textRect)
-
-                tempVis = selected.get_vis(self.matrix, t, self.maxX, self.maxY)
-                self.show_Vision(1320, 600, tempVis, self.maxX, self.maxY, t, screen)
-
                 selected = button_unselect.button("Back", 1455, 400, 310, 50, green, light_green, screen, setNone, selected)
+
+            prevSelected = selected
 
             pygame.display.flip()
             clock.tick(FPS)
         return state
 
+def new_Gen(newMatrix, seed):
+    newMatrix.matrix = np.full((newMatrix.maxX, newMatrix.maxY, newMatrix.maxTime), water())
+    newMatrix.foods = []
+    newMatrix.creatures = []
+    foodCount = 10
+    for x in range(foodCount):
+        temp = food(np.random.randint(0, newMatrix.maxX), np.random.randint(0, newMatrix.maxY))
+        newMatrix.foods.append(temp)
+
+    creatureTagGenerator = creatureTagger()
+    creatureCount = 10
+    for x in range(creatureCount):
+        tempCreature = creature(creatureTagGenerator.get_tag(), 1, 0, 1, 1, None, np.random.randint(0, 1001), np.random.randint(10, 101), np.random.randint(0, newMatrix.maxX), np.random.randint(0, newMatrix.maxY))
+        newMatrix.creatures.append(tempCreature)
+
+    #loading into matrix
+    for foodloader in range(foodCount):
+        newMatrix.matrix[newMatrix.foods[foodloader].get_Pos()[0], newMatrix.foods[foodloader].get_Pos()[1], 0] = newMatrix.foods[foodloader]
+
+    for creatureLoader in range(creatureCount):
+        if type(newMatrix.matrix[newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y, 0]) == food:
+            print("creature ate at ", newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y)
+            newMatrix.creatures[creatureLoader].add_food()
+            newMatrix.eat(newMatrix.foods, (newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y))
+            foodCount -= 1
+        newMatrix.matrix[newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y, 0] = newMatrix.creatures[creatureLoader]
+
+    return newMatrix
+
+def new_Seed(currentDT):
+    newSeed = (currentDT.minute * currentDT.microsecond + currentDT.year * currentDT.hour * currentDT.second)
+    return newSeed
+
+
 def run(config_path):
     """
-    runs the NEAT algorithm to train a neural network to play flappy bird.
     :param config_file: location of config file
     :return: None
     """
@@ -655,7 +702,7 @@ def run(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
 
-    #winner = p.run(eval_genomes, 50)
+    winner = p.run(main, 50)
 
     # show final stats
     #print('\nBest genome:\n{!s}'.format(winner))
@@ -664,24 +711,64 @@ def main(genomes, config):
     nets = []
     ge = []
     creatures = []
+    maxX = maxY = 30
+    maxTime = 30
+    sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
+    clock = pygame.time.Clock()
+    FPS = 60
+    seed = 15
+    np.random.seed(seed)
+    currentDT = datetime.datetime.now()
+    size = width, height = 1300, 1080
+
 
     for _, g in genomes:
         net = neat.nn.FeedForwardNetwork.create(g, config)
         nets.append(net)
-        creatures.append(creature(node()))
+        creatures.append(creature())
         g.fitness = 0
         ge.append(g)
 
     time = 0
-
+    state = 1
+    generation = 1
     run = True
     while run:
         clock.tick(FPS)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-                pygame.quit()
-                quit()
+        newMatrix = matrix(maxX, maxY, maxTime)
+        seed = new_Seed(currentDT)
+        newMatrix = new_Gen(newMatrix, seed)
+        while state == 1:  # sim
+            for time in range(maxTime-1):
+
+                for fooder in newMatrix.foods:
+                    newMatrix.matrix[fooder.get_Pos()[0], fooder.get_Pos()[1], time + 1] = newMatrix.matrix[fooder.get_Pos()[0], fooder.get_Pos()[1], time]
+
+                for g in ge:
+                    pass
+
+                for creer in newMatrix.creatures:
+                    decisionX = dec()
+                    decisionY = dec()
+                    xDist = 0
+                    yDist = 0
+                    if decisionX == 0:
+                        xDist += creer.speed
+                    elif decisionX == 1:
+                        xDist -= creer.speed
+                    if decisionY == 0:
+                        yDist += creer.speed
+                    elif decisionY == 1:
+                        yDist -= creer.speed
+                    newMatrix.move_Check(creer, xDist, yDist, time)
+
+                state = 2
+        stateHandler(newMatrix, size[0], size[1], maxTime)
+        generation += 1
+        state = 1
+        del newMatrix
+
+        
 
 if __name__ == '__main__':
     # Determine path to configuration file. This path manipulation is
@@ -698,4 +785,5 @@ notes:
     pre-made sizes in initialization
 - make a class for buttons and menus or something so that it's easy to make
 - maybe make a test code for each function to test if it still works
+- https://youtu.be/dQw4w9WgXcQ
 """
