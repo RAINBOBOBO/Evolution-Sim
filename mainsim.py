@@ -6,8 +6,6 @@ import numpy as np
 import neat
 from abc import ABC, abstractmethod
 from fractions import Fraction
-import mainsim
-from mainsim import *
 import math
 import datetime
 
@@ -17,32 +15,36 @@ import datetime
 
 pygame.init()
 
+print(sys.version)
+
 # 0=null
 # 1=water
 # 2=creature
 # 3=food
 # 4=out of bounds
 
-black = [0, 0, 0]
-red = [200, 0, 0]
-light_red = [255, 0, 0]
-green = [0, 200, 0]
-light_green = [0, 255, 0]
-blue = [0, 0, 200]
-light_blue = [0, 0, 255]
-orange = [200, 110, 0]
-light_orange = [255, 110, 0]
-yellow = [255, 255, 0]
-white = [255, 255, 255]
-menu_blue = [0, 100, 200]
+BLACK = [0, 0, 0]
+RED = [200, 0, 0]
+LIGHT_RED = [255, 0, 0]
+GREEN = [0, 200, 0]
+LIGHT_GREEN = [0, 255, 0]
+BLUE = [0, 0, 200]
+LIGHT_BLUE = [0, 0, 255]
+ORANGE = [200, 110, 0]
+LIGHT_ORANGE = [255, 110, 0]
+YELLOW = [255, 255, 0]
+WHITE = [255, 255, 255]
+MENU_BLUE = [0, 100, 200]
 
 os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
 myFont = pygame.font.SysFont("arial", 15)
-sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
+SIGHTLIM = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
 clock = pygame.time.Clock()
 FPS = 60
-screenSizeY = 1080
-screenSizeX = 1920
+SCREEN_SIZE_Y = 1080
+SCREEN_SIZE_X = 1920
+seed = 15
+np.random.seed(seed)
 
 
 def dec():
@@ -132,9 +134,9 @@ def setNone(state):
     state = None
     return state
 
-def stateHandler(matrix, x, y, time):
+def stateHandler(matrix, x, y, time, defaultState = 1):
     done = False
-    state = 1
+    state = defaultState
     while done == False:
         if state == 1:
             state = menu()
@@ -142,18 +144,19 @@ def stateHandler(matrix, x, y, time):
             state = matrix.show_Matrix(x, y, time)
         elif state == 3:
             done = True
-    return
+    # print(str(state) + "&&&")
+    return state
 
 def text_objects(text, font):
-    textSurface = font.render(text, True, black)
+    textSurface = font.render(text, True, BLACK)
     return textSurface, textSurface.get_rect()
 
 def menu():
     screen = pygame.display.set_mode((1920, 1080), pygame.NOFRAME | pygame.FULLSCREEN)
     state = 1
 
-    button_start = buttonClass("start")
-    button_menu_quit = buttonClass("menuQuit")
+    button_start = ButtonClass("start")
+    button_menu_quit = ButtonClass("menuQuit")
 
     while state == 1:
         for event in pygame.event.get():
@@ -165,21 +168,21 @@ def menu():
         mouse = pygame.mouse.get_pos()
 
         #drawing the menu elements
-        screen.fill(menu_blue)
+        screen.fill(MENU_BLUE)
         largeText = pygame.font.SysFont("arial", 115)
         textSurf, textRect = text_objects('Evolution Simulator', largeText)
         textRect.center = ((1920/2), (1080/2))
         screen.blit(textSurf, textRect)
 
         #menu buttons
-        state = button_start.button("Start", 810, 695, 300, 50, blue, light_blue, screen, changeState2, state)
-        button_menu_quit.button("Quit", 810, 770, 300, 50, red, light_red, screen, quitgame)
+        state = button_start.button("Start", 810, 695, 300, 50, BLUE, LIGHT_BLUE, screen, changeState2, state)
+        button_menu_quit.button("Quit", 810, 770, 300, 50, RED, LIGHT_RED, screen, quitgame)
 
         pygame.display.flip()
         clock.tick(FPS)
     return state
 
-class sliderClass:
+class SliderClass:
     def __init__(self, sliderID, x, y, w, h, barWidth, ac, screen, p1):
         self.id = sliderID
         self.mouseDown = False
@@ -229,7 +232,7 @@ class sliderClass:
         return self.p1
 
 
-class buttonClass:
+class ButtonClass:
     def __init__(self, buttonID):
         self.id = buttonID
         self.mouseDown = False
@@ -262,25 +265,30 @@ class buttonClass:
         if p1 != None:
             return p1
 
-class water:
-    def __init__(self):
-        pass
 
-class void:
+class Water:
     def __init__(self):
-        pass
+        self.fitID = 1
 
-class food:
+
+class Void:
+    def __init__(self):
+        self.fitID = 2
+
+
+class Food:
     def __init__(self, x, y, edibility = None):
         self.x = x
         self.y = y
         self.pos = [x, y]
         self.edibility = edibility
+        self.fitID = 3
 
     def get_Pos(self):
         return self.pos
 
-class creature:
+
+class Creature:
     def __init__(self, tag = None, speed = None, food = None, health = None, sight = None, actionPoints = None, digestibility = None, digestRange = None, x = None, y = None):
         self.tag = tag
         self.speed = speed
@@ -292,6 +300,8 @@ class creature:
         self.digestRange = digestRange
         self.x = x
         self.y = y
+        self.fitID = 4
+        self.hunger = 10
 
     def moveX(self, amt = None):
         if (amt):
@@ -318,7 +328,7 @@ class creature:
             self.health += 1
 
     def get_vis(self, world, time, maxX, maxY, creatureX, creatureY): #this function is so we have a uniform, square table to work w/ (including out of bounds)
-        vis = np.full((maxX, maxY), void()) #check if this should be void, not water... wat de fak?
+        vis = np.full((maxX, maxY), Void()) #check if this should be void, not water... wat de fak?
         relLeft = (creatureX - self.sight)
         relRight = (creatureX + self.sight)
         relUp = (creatureY - self.sight)
@@ -336,42 +346,43 @@ class creature:
         x = (self.x - 1)
         y = (self.y - 1)
         sideLen = 2
-        for a in range(sightLim):
+        for a in range(SIGHTLIM):
             for looper in range(4):
                 if looper == 0:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[x, y])
                         else:
-                            newVis.append(void())
+                            newVis.append(Void())
                         x += 1
                 elif looper == 1:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[x, y])
                         else:
-                            newVis.append(void())
+                            newVis.append(Void())
                         y += 1
                 elif looper == 2:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[x, y])
                         else:
-                            newVis.append(void())
+                            newVis.append(Void())
                         x -= 1
                 elif looper == 3:
                     for traverser in range(sideLen):
                         if x >= 0 and x < maxX and y >= 0 and y < maxY:
                             newVis.append(vis[x, y])
                         else:
-                            newVis.append(void())
+                            newVis.append(Void())
                         y -= 1
                     x -= 1
                     y -= 1
                     sideLen += 2
         return newVis
 
-class creatureTagger:
+
+class CreatureTagger:
     def __init__(self):
         self.currentTag = 0
 
@@ -379,18 +390,19 @@ class creatureTagger:
         self.currentTag += 1
         return self.currentTag
 
-class matrix:
+
+class Matrix:
     def __init__(self, maxX = 1, maxY = 1, maxTime = 1):
         self.maxX = maxX
         self.maxY = maxY
         self.maxTime = maxTime
-        self.matrix = np.full((maxX, maxY, maxTime), water())
+        self.matrix = np.full((maxX, maxY, maxTime), Water())
         self.creatures = []
         self.foods = []
         self.hazards = []
 
     def copy_matrix(self, copyMatrix):
-        newMatrix = matrix(self.maxX, self.maxY, self.maxTime)
+        newMatrix = Matrix(self.maxX, self.maxY, self.maxTime)
         newMatrix.matrix = self.matrix
         newMatrix.creatures = self.creatures
         newMatrix.foods = self.foods
@@ -398,14 +410,27 @@ class matrix:
         return newMatrix
 
     def move(self, creature, xDist, yDist, time):
-        self.matrix[creature.x, creature.y, time + 1] = water()
+        self.matrix[creature.x, creature.y, time + 1] = Water()
         if xDist != 0:
             creature.moveX(xDist)
         if yDist != 0:
             creature.moveY(yDist)
         self.matrix[creature.x, creature.y, time + 1] = creature
 
-    def move_Check(self, creature, xDist, yDist, time):
+    def apply_Hunger(self, nets, ge, creatureList):
+        for creature in creatureList:
+            creature.hunger -= 1;
+        listLength = len(creatureList)
+        index = 0
+        while index < listLength:
+            if creatureList[index].hunger <= 0:
+                creatureList.pop(index)
+                nets.pop(index)
+                ge.pop(index)
+                listLength -= 1
+            index += 1
+
+    def move_Check(self, creature, xDist, yDist, time, genome):
         if xDist == 0 and yDist == 0:
             self.move(creature, 0, 0, time)
             return
@@ -426,7 +451,7 @@ class matrix:
         elif target == 3:
             self.move(creature, xDist, yDist, time)
             self.eat(self.foods, (creature.x, creature.y))
-            self.nutrientCalculator(creature, (creature.x, creature.y))
+            self.nutrientCalculator(creature, (creature.x, creature.y), genome)
             print("ate food at ", time)
             return
         else:
@@ -477,7 +502,7 @@ class matrix:
                 damage = i
                 return damage
 
-    def nutrientCalculator(self, creature, position):
+    def nutrientCalculator(self, creature, position, genome):
         damage = 0
         #if a creature eats a food that isnt in its range it should take a slow effect or a poison effect based on how far it is from the eatable range
         digestMax = thousandCircle(creature.digestibility + creature.digestRange)
@@ -489,15 +514,21 @@ class matrix:
                 if self.foods[x].edibility <= digestMax and self.foods[x].edibility >= digestMin:
                     #if food is in edible range, add food
                     creature.add_food(abs(creature.digestibility - self.foods[x].edibility))
+                    genome.fitness += 5
+                    creature.hunger += 3
                 elif self.foods[x].edibility <= digestMax or self.foods[x].edibility >= digestMin:
                     #if food is in edible range, add food
                     creature.add_food(abs(creature.digestibility - self.foods[x].edibility))
+                    genome.fitness += 5
+                    creature.hunger += 3
                 elif self.foods[x].edibility <= digestMax and self.foods[x].edibility >= digestMin:
                     damage = self.poisonCalculator(creature, position, digestMax, digestMin)
                     creature.add_health(-damage)
+                    genome.fitness -= 15
                 elif self.foods[x].edibility <= digestMax or self.foods[x].edibility >= digestMin:
                     damage = self.poisonCalculator(creature, position, digestMax, digestMin)
                     creature.add_health(-damage)
+                    genome.fitness -= 15
     def attack(self, creature, direction):
         pass
 
@@ -512,14 +543,14 @@ class matrix:
         yScale =  math.ceil(600/self.maxY)
         for x in range(maxX):
             for y in range(maxY):
-                if type(vis[x, y]) == water:
-                    pygame.draw.rect(screen, blue, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
-                elif type(vis[x, y]) == creature:
-                    pygame.draw.rect(screen, yellow, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
-                elif type(vis[x, y]) == food:
-                    pygame.draw.rect(screen, green, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
-                elif type(vis[x, y]) == void:
-                    pygame.draw.rect(screen, red, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
+                if type(vis[x, y]) == Water:
+                    pygame.draw.rect(screen, BLUE, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
+                elif type(vis[x, y]) == Creature:
+                    pygame.draw.rect(screen, YELLOW, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
+                elif type(vis[x, y]) == Food:
+                    pygame.draw.rect(screen, GREEN, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
+                elif type(vis[x, y]) == Void:
+                    pygame.draw.rect(screen, RED, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
 
     def show_Matrix(self, xSize, ySize, maxTime):
         selected = None
@@ -532,24 +563,26 @@ class matrix:
         xScale = math.ceil(xSize/self.maxX)
         yScale = math.ceil(ySize/self.maxY)
 
-        screen = pygame.display.set_mode((screenSizeX, screenSizeY), pygame.NOFRAME | pygame.FULLSCREEN)
+        screen = pygame.display.set_mode((SCREEN_SIZE_X, SCREEN_SIZE_Y), pygame.NOFRAME | pygame.FULLSCREEN)
 
         state = 2
         t=0
         prevT = None
 
         #defining buttons
-        button_play = buttonClass("play")
-        button_pause = buttonClass("pause")
-        button_back = buttonClass("back")
-        button_quit = buttonClass("quit")
-        button_tUp = buttonClass("tUp")
-        button_tDown = buttonClass("tDown")
-        button_menu = buttonClass("menu")
-        button_unselect = buttonClass("unselect")
-        button_nextGen = buttonClass("nextGen")
+        button_play = ButtonClass("play")
+        button_pause = ButtonClass("pause")
+        button_back = ButtonClass("back")
+        button_quit = ButtonClass("quit")
+        button_tUp = ButtonClass("tUp")
+        button_tDown = ButtonClass("tDown")
+        button_menu = ButtonClass("menu")
+        button_unselect = ButtonClass("unselect")
+        button_nextGen = ButtonClass("nextGen")
+        button_5Gen = ButtonClass("5Gen")
+        button_10Gen = ButtonClass("10Gen")
 
-        slider_time = sliderClass("time", 1455, 380, 310, 20, 5, green, screen, playSpeed)
+        slider_time = SliderClass("time", 1455, 380, 310, 20, 5, GREEN, screen, playSpeed)
 
         while state == 2:
             mouse = pygame.mouse.get_pos()
@@ -588,25 +621,25 @@ class matrix:
             if prevT != None and prevT != t:
                 for x in range(self.maxX):
                     for y in range(self.maxY):
-                        if type(self.matrix[x, y, t]) == water:
-                            pygame.draw.rect(screen, blue, (x * xScale, y * yScale, xScale, yScale))
-                        elif type(self.matrix[x, y, t]) == creature:
-                            pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
-                        elif type(self.matrix[x, y, t]) == food:
-                            pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
+                        if type(self.matrix[x, y, t]) == Water:
+                            pygame.draw.rect(screen, BLUE, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, t]) == Creature:
+                            pygame.draw.rect(screen, YELLOW, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, t]) == Food:
+                            pygame.draw.rect(screen, GREEN, (x * xScale, y * yScale, xScale, yScale))
             if prevT == None:
                 for x in range(self.maxX):
                     for y in range(self.maxY):
-                        if type(self.matrix[x, y, 0]) == water:
-                            pygame.draw.rect(screen, blue, (x * xScale, y * yScale, xScale, yScale))
-                        elif type(self.matrix[x, y, 0]) == creature:
-                            pygame.draw.rect(screen, yellow, (x * xScale, y * yScale, xScale, yScale))
-                        elif type(self.matrix[x, y, 0]) == food:
-                            pygame.draw.rect(screen, green, (x * xScale, y * yScale, xScale, yScale))
+                        if type(self.matrix[x, y, 0]) == Water:
+                            pygame.draw.rect(screen, BLUE, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, 0]) == Creature:
+                            pygame.draw.rect(screen, YELLOW, (x * xScale, y * yScale, xScale, yScale))
+                        elif type(self.matrix[x, y, 0]) == Food:
+                            pygame.draw.rect(screen, GREEN, (x * xScale, y * yScale, xScale, yScale))
 
             if selected != None:
                 if prevSelected == None or prevSelected != selected:
-                    pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
+                    pygame.draw.rect(screen, WHITE, (self.maxX*xScale, 0, 1920-xSize, 1080))
                     selectedText = pygame.font.SysFont("arial", 20)
                     textSurf, textRect = text_objects("creature tag:" + (str(selected.tag) + ", speed:" + str(selected.speed) + ", food:" + str(selected.food) + ", health:" + str(selected.health)) + " at t = " + str(t) + ", (" + str(cursorX) + "," + str(cursorY) + ")",  selectedText)
                     textRect.center = (1580, 200)
@@ -620,16 +653,17 @@ class matrix:
             
             #buttons
             if selected == None:
-                pygame.draw.rect(screen, white, (self.maxX*xScale, 0, 1920-xSize, 1080))
-                play = button_play.button("Play", 1455, 200, 310, 50, green, light_green, screen, changeState1, play)
-                play = button_pause.button("Pause", 1455, 260, 310, 50, green, light_green, screen, changeState0, play)
-                t = button_back.button("Back", 1455, 320, 310, 50, green, light_green, screen, changeState0, t)
-                t = button_tUp.button("Time -1", 1455, 600, 150, 50, blue, light_blue, screen, timedown, t)
-                t = button_tDown.button("Time +1", 1610, 600, 150, 50, blue, light_blue, screen, timeup, t)
+                pygame.draw.rect(screen, WHITE, (self.maxX*xScale, 0, 1920-xSize, 1080))
+                play = button_play.button("Play", 1455, 200, 310, 50, GREEN, LIGHT_GREEN, screen, changeState1, play)
+                play = button_pause.button("Pause", 1455, 260, 310, 50, GREEN, LIGHT_GREEN, screen, changeState0, play)
+                t = button_back.button("Back", 1455, 320, 310, 50, GREEN, LIGHT_GREEN, screen, changeState0, t)
+                t = button_tUp.button("Time -1", 1455, 600, 150, 50, BLUE, LIGHT_BLUE, screen, timedown, t)
+                t = button_tDown.button("Time +1", 1610, 600, 150, 50, BLUE, LIGHT_BLUE, screen, timeup, t)
                 playSpeed = slider_time.slider(self.maxX, self.maxY)
-                state = button_nextGen.button("New Generation", 1455, 900, 310, 50, orange, light_orange, screen, changeState3, state)
-                state = button_menu.button("Menu", 1455, 960, 310, 50, menu_blue, light_blue, screen, changeState1, state)
-                button_quit.button("Quit", 1455, 1020, 310, 50, red, light_red, screen, quitgame)
+                state = button_nextGen.button("New Generation", 1455, 840, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState3, state)
+                state = button_5Gen.button("5Gen", 1455, 900, 310, 50, ORANGE, LIGHT_ORANGE, screen, ) #maybe a unique state for each option, then run function for 5 gen in main
+                state = button_menu.button("Menu", 1455, 960, 310, 50, MENU_BLUE, LIGHT_BLUE, screen, changeState1, state)
+                button_quit.button("Quit", 1455, 1020, 310, 50, RED, LIGHT_RED, screen, quitgame)
 
                 #when play button is pressed
                 if play == 1 and t < (maxTime-1):
@@ -645,35 +679,60 @@ class matrix:
                 screen.blit(textSurf, textRect)
                 
             else:
-                selected = button_unselect.button("Back", 1455, 400, 310, 50, green, light_green, screen, setNone, selected)
+                selected = button_unselect.button("Back", 1455, 400, 310, 50, GREEN, LIGHT_GREEN, screen, setNone, selected)
 
             prevSelected = selected
 
             pygame.display.flip()
             clock.tick(FPS)
+        # print(str(state) + "###")
         return state
 
-def new_Gen(newMatrix, seed):
-    newMatrix.matrix = np.full((newMatrix.maxX, newMatrix.maxY, newMatrix.maxTime), water())
+
+class StateTracker:
+    def __init__(self, initial_state = 1):
+        self.state = initial_state
+        self.generation_ran = False
+        self.buffer = 0
+   
+    def set_state(self, state):
+        self.state = state
+
+    def run_once(self):
+        if self.generation_ran:
+            self.generation_ran = False
+            self.state = 2
+        else:
+            self.generation_ran = True
+
+    def run_x_times(self, x):
+        if self.buffer < x:
+            self.buffer += 1
+        else:
+            self.buffer = 0
+            self.state = 2
+
+
+
+
+def new_Gen(newMatrix, creatureList): #make this accept a list of creatures as a param, then load it into matrix
+    newMatrix.matrix = np.full((newMatrix.maxX, newMatrix.maxY, newMatrix.maxTime), Water())
     newMatrix.foods = []
     newMatrix.creatures = []
     foodCount = 10
     for x in range(foodCount):
-        temp = food(np.random.randint(0, newMatrix.maxX), np.random.randint(0, newMatrix.maxY))
+        temp = Food(np.random.randint(0, newMatrix.maxX), np.random.randint(0, newMatrix.maxY))
         newMatrix.foods.append(temp)
 
-    creatureTagGenerator = creatureTagger()
-    creatureCount = 10
-    for x in range(creatureCount):
-        tempCreature = creature(creatureTagGenerator.get_tag(), 1, 0, 1, 1, None, np.random.randint(0, 1001), np.random.randint(10, 101), np.random.randint(0, newMatrix.maxX), np.random.randint(0, newMatrix.maxY))
-        newMatrix.creatures.append(tempCreature)
+    for x in range(len(creatureList)):
+        newMatrix.creatures.append(creatureList[x])
 
     #loading into matrix
     for foodloader in range(foodCount):
         newMatrix.matrix[newMatrix.foods[foodloader].get_Pos()[0], newMatrix.foods[foodloader].get_Pos()[1], 0] = newMatrix.foods[foodloader]
 
-    for creatureLoader in range(creatureCount):
-        if type(newMatrix.matrix[newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y, 0]) == food:
+    for creatureLoader in range(len(creatureList)):
+        if type(newMatrix.matrix[newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y, 0]) == Food:
             print("creature ate at ", newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y)
             newMatrix.creatures[creatureLoader].add_food()
             newMatrix.eat(newMatrix.foods, (newMatrix.creatures[creatureLoader].x, newMatrix.creatures[creatureLoader].y))
@@ -687,7 +746,7 @@ def new_Seed(currentDT):
     return newSeed
 
 
-def run(config_path):
+def run(config_path, str1):
     """
     :param config_file: location of config file
     :return: None
@@ -702,73 +761,109 @@ def run(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
 
+    # print("before main")
     winner = p.run(main, 50)
 
     # show final stats
     #print('\nBest genome:\n{!s}'.format(winner))
 
+main_state = StateTracker()
 def main(genomes, config):
+    # print("running main", genomes, config)
     nets = []
     ge = []
     creatures = []
     maxX = maxY = 30
     maxTime = 30
-    sightLim = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
+    SIGHTLIM = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
     clock = pygame.time.Clock()
+    # main_state = 1 #uncomment to show functionality
     FPS = 60
-    seed = 15
-    np.random.seed(seed)
     currentDT = datetime.datetime.now()
     size = width, height = 1300, 1080
 
-
+    creatureTagGenerator = CreatureTagger()
+    creatureCount = 10
     for _, g in genomes:
         net = neat.nn.FeedForwardNetwork.create(g, config)
         nets.append(net)
-        creatures.append(creature())
+        creatures.append(Creature(creatureTagGenerator.get_tag(), 1, 0, 1, 1, None, np.random.randint(0, 1001), np.random.randint(10, 101), np.random.randint(0, maxX), np.random.randint(0, maxY)))
         g.fitness = 0
         ge.append(g)
 
     time = 0
-    state = 1
+    
     generation = 1
     run = True
     while run:
+        # print('mainloopstart')
         clock.tick(FPS)
-        newMatrix = matrix(maxX, maxY, maxTime)
-        seed = new_Seed(currentDT)
-        newMatrix = new_Gen(newMatrix, seed)
-        while state == 1:  # sim
-            for time in range(maxTime-1):
+        newMatrix = Matrix(maxX, maxY, maxTime)
+        newMatrix = new_Gen(newMatrix, creatures)
 
-                for fooder in newMatrix.foods:
-                    newMatrix.matrix[fooder.get_Pos()[0], fooder.get_Pos()[1], time + 1] = newMatrix.matrix[fooder.get_Pos()[0], fooder.get_Pos()[1], time]
+        # print("04040404")
+        if len(creatures) == 0:
+            run = False
+            break
+        # print("05050505")
 
-                for g in ge:
-                    pass
+        for time in range(maxTime-1):
+            for fooder in newMatrix.foods:
+                newMatrix.matrix[fooder.get_Pos()[0], fooder.get_Pos()[1], time + 1] = newMatrix.matrix[fooder.get_Pos()[0], fooder.get_Pos()[1], time]
 
-                for creer in newMatrix.creatures:
-                    decisionX = dec()
-                    decisionY = dec()
-                    xDist = 0
-                    yDist = 0
-                    if decisionX == 0:
-                        xDist += creer.speed
-                    elif decisionX == 1:
-                        xDist -= creer.speed
-                    if decisionY == 0:
-                        yDist += creer.speed
-                    elif decisionY == 1:
-                        yDist -= creer.speed
-                    newMatrix.move_Check(creer, xDist, yDist, time)
+            for g in ge:
+                pass
 
-                state = 2
-        stateHandler(newMatrix, size[0], size[1], maxTime)
+            for i, creer in enumerate(newMatrix.creatures):
+                tempVis = creer.process_vis(newMatrix.matrix, time, maxX, maxY, creer.x, creer.y)
+                if creer.health <= 0:
+                    creatures.pop(i)
+                    nets.pop(i)
+                    ge.pop(i)
+                    continue
+
+                #come up w/ a better solution, maybe while loops or decrememnting i maybe
+                if (len(ge) > i):
+                    ge[i].fitness += 1
+                else:
+                    continue
+
+                output = nets[i].activate((creer.x, creer.y, tempVis[0].fitID,  tempVis[1].fitID, tempVis[2].fitID,  tempVis[3].fitID,  tempVis[4].fitID,  tempVis[5].fitID,  tempVis[6].fitID,  tempVis[7].fitID)) #whatever vis is, pass in some of the vision data
+                # print("06060606")
+                if output[0] < 0.2:
+                    newMatrix.move_Check(creer, 0, 0, time, ge[i])
+                elif output[0] > 0.2 and output[0] < 0.4:
+                    newMatrix.move_Check(creer, creer.speed, 0, time, ge[i])
+                elif output[0] > 0.4 and output[0] < 0.6:
+                    newMatrix.move_Check(creer, -creer.speed, 0, time, ge[i])
+                elif output[0] > 0.6 and output[0] < 0.8:
+                    newMatrix.move_Check(creer, 0, creer.speed, time, ge[i])
+                elif output[0] > 0.8:
+                    newMatrix.move_Check(creer, 0, -creer.speed, time, ge[i])
+
+                newMatrix.apply_Hunger(nets, ge, creatures)
+
+                # decisionX = dec()
+                # decisionY = dec()
+                # xDist = 0
+                # yDist = 0
+                # if decisionX == 0:
+                #     xDist += creer.speed
+                # elif decisionX == 1:
+                #     xDist -= creer.speed
+                # if decisionY == 0:
+                #     yDist += creer.speed
+                # elif decisionY == 1:
+                #     yDist -= creer.speed
+                # newMatrix.move_Check(creer, xDist, yDist, time, ge[i])
+
+        # print("main_state is ", main_state.state, " before going into stateHandler.")
+        main_state.set_state(stateHandler(newMatrix, size[0], size[1], maxTime, main_state.state))
+        main_state.run_once()
+        print(generation)
         generation += 1
-        state = 1
         del newMatrix
 
-        
 
 if __name__ == '__main__':
     # Determine path to configuration file. This path manipulation is
@@ -776,7 +871,7 @@ if __name__ == '__main__':
     # current working directory.
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config-feedforward.txt')
-    run(config_path)
+    run(config_path, "test2")
 
 """
 notes:
@@ -786,4 +881,8 @@ notes:
 - make a class for buttons and menus or something so that it's easy to make
 - maybe make a test code for each function to test if it still works
 - https://youtu.be/dQw4w9WgXcQ
+
+solution for fitness function:
+1. State handler returns the state (3 if new gen is pressed) when it finishes.
+2. Save that number to be passed into the next state handler call, so that we can skip the menu
 """
