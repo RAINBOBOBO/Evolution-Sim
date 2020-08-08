@@ -859,6 +859,8 @@ def main(genomes, config):
 
         # print("main_state is ", main_state.state, " before going into stateHandler.")
         main_state.set_state(stateHandler(newMatrix, size[0], size[1], maxTime, main_state.state))
+
+        #if main_state = 3, run once, if 4, run 5 times, if 5, run 10 times
         main_state.run_once()
         print(generation)
         generation += 1
