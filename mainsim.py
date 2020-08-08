@@ -171,7 +171,7 @@ def menu():
         screen.fill(MENU_BLUE)
         largeText = pygame.font.SysFont("arial", 115)
         textSurf, textRect = text_objects('Evolution Simulator', largeText)
-        textRect.center = ((1920/2), (1080/2))
+        textRect.center = (int(1920/2), int(1080/2))
         screen.blit(textSurf, textRect)
 
         #menu buttons
@@ -221,7 +221,7 @@ class SliderClass:
         pygame.draw.rect(self.screen, self.ac, (self.x, self.y, self.barWidth, self.h))                             #left bar
         pygame.draw.rect(self.screen, self.ac, (self.sliderX, self.y, self.barWidth, self.h))                       #slider bar
         pygame.draw.rect(self.screen, self.ac, ((self.x + self.w - self.barWidth), self.y, self.barWidth, self.h))  #right bar
-        pygame.draw.rect(self.screen, self.ac, (self.x, self.y + (self.h/2), self.w, (self.h/6)))                   #long bar
+        pygame.draw.rect(self.screen, self.ac, (self.x, self.y + int(self.h/2), self.w, int(self.h/6)))                   #long bar
 
         #drawing the value for the slider
         timeText = pygame.font.SysFont("arial", 15)
@@ -258,7 +258,7 @@ class ButtonClass:
         #drawing the text on the button
         smallText = pygame.font.SysFont("arial", 20)
         textSurf, textRect = text_objects(msg, smallText)
-        textRect.center = ((x+(w/2)), (y+(h/2)))
+        textRect.center = (int(x+(w/2)), int(y+(h/2)))
         screen.blit(textSurf, textRect)
 
         #return only if we have something to return
