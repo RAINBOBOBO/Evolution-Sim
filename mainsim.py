@@ -122,6 +122,14 @@ def changeState3(state):
     state = 3
     return state
 
+def changeState4(state):
+    state = 4
+    return state
+
+def changeState5(state):
+    state = 5
+    return state
+
 def setTrue(state):
     state = True
     return
@@ -661,7 +669,7 @@ class Matrix:
                 t = button_tDown.button("Time +1", 1610, 600, 150, 50, BLUE, LIGHT_BLUE, screen, timeup, t)
                 playSpeed = slider_time.slider(self.maxX, self.maxY)
                 state = button_nextGen.button("New Generation", 1455, 840, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState3, state)
-                state = button_5Gen.button("5Gen", 1455, 900, 310, 50, ORANGE, LIGHT_ORANGE, screen, ) #maybe a unique state for each option, then run function for 5 gen in main
+                state = button_5Gen.button("5Gen", 1455, 900, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState4, state) #maybe a unique state for each option, then run function for 5 gen in main
                 state = button_menu.button("Menu", 1455, 960, 310, 50, MENU_BLUE, LIGHT_BLUE, screen, changeState1, state)
                 button_quit.button("Quit", 1455, 1020, 310, 50, RED, LIGHT_RED, screen, quitgame)
 
@@ -861,7 +869,12 @@ def main(genomes, config):
         main_state.set_state(stateHandler(newMatrix, size[0], size[1], maxTime, main_state.state))
 
         #if main_state = 3, run once, if 4, run 5 times, if 5, run 10 times
-        main_state.run_once()
+        if main_state.state == 3:
+            main_state.run_once()
+        elif main_state.state == 4:
+            main_state.run_x_times(5)
+        elif main_state.state == 5:
+            main_state.run_x_times(10)
         print(generation)
         generation += 1
         del newMatrix
