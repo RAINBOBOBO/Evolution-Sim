@@ -123,7 +123,7 @@ def changeState3(state):
     return state
 
 def changeState4(state):
-    print("changeState4 ran")
+    # print("changeState4 ran")
     state = 4
     return state
 
@@ -144,6 +144,7 @@ def setNone(state):
     return state
 
 def stateHandler(matrix, x, y, time, defaultState = 1):
+    # print("inside stateHandler")
     done = False
     state = defaultState
     while done == False:
@@ -151,9 +152,9 @@ def stateHandler(matrix, x, y, time, defaultState = 1):
             state = menu()
         elif state == 2:
             state = matrix.show_Matrix(x, y, time)
-        elif state == 3:
+        elif state == 3 or state == 4 or state == 5:
+            # print("state is 3, done is True")
             done = True
-    # print(str(state) + "&&&")
     return state
 
 def text_objects(text, font):
@@ -674,7 +675,7 @@ class Matrix:
                 state = button_menu.button("Menu", 1455, 960, 310, 50, MENU_BLUE, LIGHT_BLUE, screen, changeState1, state)
                 button_quit.button("Quit", 1455, 1020, 310, 50, RED, LIGHT_RED, screen, quitgame)
 
-                print("inside show matrix, state is", state)
+                # print("inside show matrix, state is", state)
 
                 #when play button is pressed
                 if play == 1 and t < (maxTime-1):
@@ -696,7 +697,7 @@ class Matrix:
 
             pygame.display.flip()
             clock.tick(FPS)
-        # print(str(state) + "###")
+        # print("leaving show matrix, again state is ", state)
         return state
 
 
@@ -717,7 +718,7 @@ class StateTracker:
             self.generation_ran = True
 
     def run_x_times(self, x):
-        print("run_x_times ran")
+        # print("run_x_times ran")
         if self.buffer < x:
             self.buffer += 1
         else:
@@ -869,15 +870,15 @@ def main(genomes, config):
                 #     yDist -= creer.speed
                 # newMatrix.move_Check(creer, xDist, yDist, time, ge[i])
 
-        print("main_state is ", main_state.state, " before going into stateHandler.")
+        # print("main_state is ", main_state.state, " before going into stateHandler.")
         main_state.set_state(stateHandler(newMatrix, size[0], size[1], maxTime, main_state.state))
-        print("main_state is ", main_state.state, " after going into stateHandler.")
+        # print("main_state is ", main_state.state, " after going into stateHandler.")
 
         #if main_state = 3, run once, if 4, run 5 times, if 5, run 10 times
         if main_state.state == 3:
             main_state.run_once()
         elif main_state.state == 4:
-            print("button successfully set state to 4.")
+            # print("button successfully set state to 4.")
             main_state.run_x_times(5)
         elif main_state.state == 5:
             main_state.run_x_times(10)
