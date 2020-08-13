@@ -590,7 +590,7 @@ class Matrix:
         button_unselect = ButtonClass("unselect")
         button_nextGen = ButtonClass("nextGen")
         button_5Gen = ButtonClass("5Gen")
-        # button_10Gen = ButtonClass("10Gen")
+        button_10Gen = ButtonClass("10Gen")
 
         slider_time = SliderClass("time", 1455, 380, 310, 20, 5, GREEN, screen, playSpeed)
 
@@ -672,8 +672,9 @@ class Matrix:
                 playSpeed = slider_time.slider(self.maxX, self.maxY)
                 state = button_nextGen.button("New Generation", 1455, 840, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState3, state)
                 state = button_5Gen.button("5Gen", 1455, 900, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState4, state) #maybe a unique state for each option, then run function for 5 gen in main
-                state = button_menu.button("Menu", 1455, 960, 310, 50, MENU_BLUE, LIGHT_BLUE, screen, changeState1, state)
-                button_quit.button("Quit", 1455, 1020, 310, 50, RED, LIGHT_RED, screen, quitgame)
+                state = button_10Gen.button("10Gen", 1455, 960, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState5, state)
+                state = button_menu.button("Menu", 1455, 1020, 310, 50, MENU_BLUE, LIGHT_BLUE, screen, changeState1, state)
+                button_quit.button("Quit", 1455, 1080, 310, 50, RED, LIGHT_RED, screen, quitgame)
 
                 # print("inside show matrix, state is", state)
 
