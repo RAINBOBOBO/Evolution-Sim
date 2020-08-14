@@ -727,6 +727,13 @@ class StateTracker:
             self.state = 2
 
 
+class GenerationTracker:
+    def __init__(self):
+        self.generation = 1
+
+    def nextGeneration(self):
+        self.generation += 1
+
 
 
 def new_Gen(newMatrix, creatureList): #make this accept a list of creatures as a param, then load it into matrix
@@ -782,6 +789,7 @@ def run(config_path, str1):
     #print('\nBest genome:\n{!s}'.format(winner))
 
 main_state = StateTracker()
+main_generation = GenerationTracker()
 def main(genomes, config):
     # print("running main", genomes, config)
     nets = []
@@ -807,7 +815,6 @@ def main(genomes, config):
 
     time = 0
     
-    generation = 1
     run = True
     while run:
         # print('mainloopstart')
@@ -883,8 +890,8 @@ def main(genomes, config):
             main_state.run_x_times(5)
         elif main_state.state == 5:
             main_state.run_x_times(10)
-        print(generation)
-        generation += 1
+        print("This is the current generation number:", main_generation.generation)
+        main_generation.nextGeneration()
         del newMatrix
 
 
