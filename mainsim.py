@@ -686,9 +686,14 @@ class Matrix:
                         t += 1
 
                 #displaying stats
-                timeText = pygame.font.SysFont("arial", 20)
-                textSurf, textRect = text_objects(str(t), timeText)
-                textRect.center = (1900, 1060)
+                statsText = pygame.font.SysFont("arial", 20)
+
+                textSurf, textRect = text_objects("Generation = " + str(main_generation.generation), statsText)
+                textRect.center = (1845, 1030)
+                screen.blit(textSurf, textRect)
+
+                textSurf, textRect = text_objects("Time = " + str(t), statsText)
+                textRect.center = (1820, 1060)
                 screen.blit(textSurf, textRect)
                 
             else:
