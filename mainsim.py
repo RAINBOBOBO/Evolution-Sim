@@ -717,6 +717,7 @@ class StateTracker:
         self.state = state
 
     def run_once(self):
+        print("run_once ran and state is", self.state, "generation_ran is", self.generation_ran)
         if self.generation_ran:
             self.generation_ran = False
             self.state = 2
@@ -724,7 +725,7 @@ class StateTracker:
             self.generation_ran = True
 
     def run_x_times(self, x):
-        # print("run_x_times ran")
+        print("run_x_times ran and state is", self.state, "buffer is", self.buffer)
         if self.buffer < x:
             self.buffer += 1
         else:
@@ -796,7 +797,7 @@ def run(config_path, str1):
 main_state = StateTracker()
 main_generation = GenerationTracker()
 def main(genomes, config):
-    # print("running main", genomes, config)
+    print("running main, generation number is:", main_generation.generation)
     nets = []
     ge = []
     creatures = []
