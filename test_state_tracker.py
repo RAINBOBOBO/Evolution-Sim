@@ -2,11 +2,23 @@
 
 import os
 from unittest import TestCase
-from mainsim import StateTracker
+from mainsim import StateTracker, quitgame
 
 
 def mock_main():
-	pass
+	run = True
+	while run:
+		print("simulating...");
+
+		state_tracker.set_state(mock_state_handler(state_tracker.state))
+
+        #if state_tracker = 3, run once, if 4, run 5 times, if 5, run 10 times
+        if state_tracker.state == 3:
+            state_tracker.run_once()
+        elif state_tracker.state == 4:
+            state_tracker.run_x_times(5)
+        elif state_tracker.state == 5:
+            state_tracker.run_x_times(10)
 
 def mock_menu():
 	return 2
@@ -32,6 +44,7 @@ class StateTrackerTestCase(TestCase):
 	def setUp(self):
 		"""Create a StateTracker instance"""
 		state_tracker = StateTracker()
+
 
 
 	def test_run_once(self):
