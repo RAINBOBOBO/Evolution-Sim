@@ -4,7 +4,6 @@ import os
 from unittest import TestCase
 from mainsim import StateTracker, quitgame
 
-
 def mock_main():
 	run = True
 	while run:
