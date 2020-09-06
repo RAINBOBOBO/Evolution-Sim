@@ -4,10 +4,11 @@ import os
 from unittest import TestCase
 from mainsim import StateTracker, quitgame
 
-def mock_main():
+def mock_main(counter, runs):
 	run = True
 	while run:
 		print("simulating...");
+		counter += 1
 
 		state_tracker.set_state(mock_state_handler(state_tracker.state))
 
@@ -18,6 +19,12 @@ def mock_main():
 			state_tracker.run_x_times(5)
 		elif state_tracker.state == 5:
 			state_tracker.run_x_times(10)
+
+		if (counter >= runs):
+			print(counter)
+			run = False
+	return counter
+
 
 def mock_menu():
 	return 2
@@ -43,14 +50,31 @@ def mock_state_handler(defaultState = 1):
 	return state
 
 state_tracker = StateTracker(3)
+INITIAL_COUNTER = 0
 class StateTrackerTestCase(TestCase):
 
 	def test_run_once(self):
+		counter = 0
 		"""Test run_once class method"""
 		print("starting run_once test")
-		mock_main()
+		counter = mock_main(INITIAL_COUNTER, 1)
 		print("run_once test complete")
+		self.assertEqual(counter, 1);
+
+	def test_five_times(self):
+		counter = 0
+		"""Test run_once class method"""
+		print("starting run_once test")
+		counter = mock_main(INITIAL_COUNTER, 5)
+		print("run_once test complete")
+		self.assertEqual(counter, 5);
 
 
-
+	def test_ten_times(self):
+		counter = 0
+		"""Test run_once class method"""
+		print("starting run_once test")
+		counter = mock_main(INITIAL_COUNTER, 10)
+		print("run_once test complete")
+		self.assertEqual(counter, 10);
 		
