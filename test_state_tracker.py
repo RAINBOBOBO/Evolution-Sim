@@ -49,32 +49,46 @@ def mock_state_handler(defaultState = 1):
 			done = True
 	return state
 
-state_tracker = StateTracker(3)
+state_tracker = StateTracker()
 INITIAL_COUNTER = 0
 class StateTrackerTestCase(TestCase):
+	""" mock_main -> mock_state_handler -> mock_sh"""
 
 	def test_run_once(self):
-		counter = 0
 		"""Test run_once class method"""
+		counter = 0
 		print("starting run_once test")
+		state_tracker.set_state(3)
 		counter = mock_main(INITIAL_COUNTER, 1)
 		print("run_once test complete")
 		self.assertEqual(counter, 1);
 
 	def test_five_times(self):
+		"""Test run_five_times class method"""
 		counter = 0
-		"""Test run_once class method"""
 		print("starting run_once test")
+		state_tracker.set_state(4)
 		counter = mock_main(INITIAL_COUNTER, 5)
 		print("run_once test complete")
 		self.assertEqual(counter, 5);
 
 
 	def test_ten_times(self):
+		"""Test run_ten_times class method"""
 		counter = 0
-		"""Test run_once class method"""
 		print("starting run_once test")
+		state_tracker.set_state(5)
 		counter = mock_main(INITIAL_COUNTER, 10)
 		print("run_once test complete")
 		self.assertEqual(counter, 10);
+
+
+	def test_hundred_times(self):
+		"""Test run_hundred_times class method"""
+		counter = 0
+		print("starting run_once test")
+		state_tracker.set_state(5)
+		counter = mock_main(INITIAL_COUNTER, 100)
+		print("run_once test complete")
+		self.assertEqual(counter, 100);
 		
