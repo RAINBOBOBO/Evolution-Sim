@@ -43,7 +43,7 @@ clock = pygame.time.Clock()
 FPS = 60
 SCREEN_SIZE_Y = 1080
 SCREEN_SIZE_X = 1920
-seed = 15
+seed = 21
 np.random.seed(seed)
 
 
@@ -143,7 +143,7 @@ def setNone(state):
     state = None
     return state
 
-def stateHandler(matrix, x, y, time, defaultState = 1):
+def stateHandler(matrix, x, y, maxTime, defaultState = 1):
     # print("inside stateHandler")
     done = False
     state = defaultState
@@ -151,7 +151,7 @@ def stateHandler(matrix, x, y, time, defaultState = 1):
         if state == 1:
             state = menu()
         elif state == 2:
-            state = matrix.show_Matrix(x, y, time)
+            state = matrix.show_Matrix(x, y, maxTime, time)
         elif state == 3 or state == 4 or state == 5:
             # print("state is 3, done is True")
             done = True
@@ -337,12 +337,18 @@ class Creature:
         else:
             self.health += 1
 
-    def get_vis(self, world, time, maxX, maxY, creatureX, creatureY): #this function is so we have a uniform, square table to work w/ (including out of bounds)
-        vis = np.full((maxX, maxY), Void()) #check if this should be void, not water... wat de fak?
+    #this function is so we have a uniform, square table to work w/ (including out of bounds)
+    def get_vis(self, world, time, maxX, maxY, creatureX, creatureY):
+        # Create an NxN array of Void objects
+        vis = np.full((maxX, maxY), Void())
+
+        # Define relative bounds for sight range
         relLeft = (creatureX - self.sight)
         relRight = (creatureX + self.sight)
         relUp = (creatureY - self.sight)
         relDown = (creatureY + self.sight)
+
+        # Replace Void w/ Water/Food/Creature based on world array
         for x in range(maxX):
             for y in range(maxY):
                 if x >= relLeft and x <= relRight and y >= relUp and y <= relDown:
@@ -350,13 +356,17 @@ class Creature:
                         vis[x, y] = world[x, y, time]
         return vis
 
-    def process_vis(self, world, time, maxX, maxY, creatureX, creatureY): #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
+    #this one takes the table from get_vis() and turns it into a 1D table where each position is fixed relative to the creature
+    def process_vis(self, world, time, maxX, maxY, creatureX, creatureY):
         vis = self.get_vis(world, time, maxX, maxY, creatureX, creatureY)
         newVis = []
         x = (self.x - 1)
         y = (self.y - 1)
         sideLen = 2
+
+        # How many layers the function will record, moving outward from the creature, 1 loop = 1 layer
         for a in range(SIGHTLIM):
+            # Keeps track of how many sides of the loop have been recorded so far (total of 4 sides)
             for looper in range(4):
                 if looper == 0:
                     for traverser in range(sideLen):
@@ -562,12 +572,66 @@ class Matrix:
                 elif type(vis[x, y]) == Void:
                     pygame.draw.rect(screen, RED, (xPos + (x * xScale), yPos + (y * yScale), xScale, yScale))
 
-    def show_Matrix(self, xSize, ySize, maxTime):
+    def show_Sidebar(self, selected):
+        selected = None
+        
+         #defining buttons
+        button_play = ButtonClass("play")
+        button_pause = ButtonClass("pause")
+        button_back = ButtonClass("back")
+        button_quit = ButtonClass("quit")
+        button_tUp = ButtonClass("tUp")
+        button_tDown = ButtonClass("tDown")
+        button_menu = ButtonClass("menu")
+        button_unselect = ButtonClass("unselect")
+        button_nextGen = ButtonClass("nextGen")
+        button_5Gen = ButtonClass("5Gen")
+        button_10Gen = ButtonClass("10Gen")
+
+        slider_time = SliderClass("time", 1455, 380, 310, 20, 5, GREEN, screen, playSpeed)
+
+        #buttons
+        if selected == None:
+            pygame.draw.rect(screen, WHITE, (self.maxX*xScale, 0, 1920-xSize, 1080))
+            play = button_play.button("Play", 1455, 200, 310, 50, GREEN, LIGHT_GREEN, screen, changeState1, play)
+            play = button_pause.button("Pause", 1455, 260, 310, 50, GREEN, LIGHT_GREEN, screen, changeState0, play)
+            t = button_back.button("Back", 1455, 320, 310, 50, GREEN, LIGHT_GREEN, screen, changeState0, t)
+            t = button_tUp.button("Time -1", 1455, 600, 150, 50, BLUE, LIGHT_BLUE, screen, timedown, t)
+            t = button_tDown.button("Time +1", 1610, 600, 150, 50, BLUE, LIGHT_BLUE, screen, timeup, t)
+            playSpeed = slider_time.slider(self.maxX, self.maxY)
+            state = button_nextGen.button("New Generation", 1455, 780, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState3, state)
+            state = button_5Gen.button("5Gen", 1455, 840, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState4, state) #maybe a unique state for each option, then run function for 5 gen in main
+            state = button_10Gen.button("10Gen", 1455, 900, 310, 50, ORANGE, LIGHT_ORANGE, screen, changeState5, state)
+            state = button_menu.button("Menu", 1455, 960, 310, 50, MENU_BLUE, LIGHT_BLUE, screen, changeState1, state)
+            button_quit.button("Quit", 1455, 1020, 310, 50, RED, LIGHT_RED, screen, quitgame)
+
+            #when play button is pressed
+            if play == 1 and t < (maxTime-1):
+                a += playSpeed
+                if a >= 50:
+                    a = 0
+                    t += 1
+
+            #displaying stats
+            statsText = pygame.font.SysFont("arial", 20)
+
+            textSurf, textRect = text_objects("Generation = " + str(main_generation.generation), statsText)
+            textRect.center = (1845, 1030)
+            screen.blit(textSurf, textRect)
+
+            textSurf, textRect = text_objects("Time = " + str(t), statsText)
+            textRect.center = (1820, 1060)
+            screen.blit(textSurf, textRect)
+
+        else:
+            selected = button_unselect.button("Back", 1455, 400, 310, 50, GREEN, LIGHT_GREEN, screen, setNone, selected)
+
+    def show_Matrix(self, xSize, ySize, maxTime, t):
         selected = None
         prevSelected = None
         cursorX = cursorY = 0
         play = 0
-        a = 0
+        tick = 0
         playSpeed = 1
 
         xScale = math.ceil(xSize/self.maxX)
@@ -576,7 +640,6 @@ class Matrix:
         screen = pygame.display.set_mode((SCREEN_SIZE_X, SCREEN_SIZE_Y), pygame.NOFRAME | pygame.FULLSCREEN)
 
         state = 2
-        t=0
         prevT = None
 
         #defining buttons
@@ -680,9 +743,9 @@ class Matrix:
 
                 #when play button is pressed
                 if play == 1 and t < (maxTime-1):
-                    a += playSpeed
-                    if a >= 50:
-                        a = 0
+                    tick += playSpeed
+                    if tick >= 50:
+                        tick = 0
                         t += 1
 
                 #displaying stats
@@ -701,6 +764,7 @@ class Matrix:
 
             prevSelected = selected
 
+            #TODO: move these outside of draw logic
             pygame.display.flip()
             clock.tick(FPS)
         # print("leaving show matrix, again state is ", state)
@@ -710,7 +774,7 @@ class Matrix:
 class StateTracker:
     def __init__(self, initial_state = 1):
         self.state = initial_state
-        self.generation_ran = False
+        self.generation_ran = True
         self.buffer = 0
    
     def set_state(self, state):
@@ -726,7 +790,7 @@ class StateTracker:
 
     def run_x_times(self, x):
         print("run_x_times ran and state is", self.state, "buffer is", self.buffer)
-        if self.buffer < x:
+        if self.buffer < x-1:
             self.buffer += 1
         else:
             self.buffer = 0
@@ -735,7 +799,7 @@ class StateTracker:
 
 class GenerationTracker:
     def __init__(self):
-        self.generation = 1
+        self.generation = 0
 
     def nextGeneration(self):
         self.generation += 1
@@ -801,7 +865,7 @@ def main(genomes, config):
     nets = []
     ge = []
     creatures = []
-    maxX = maxY = 30
+    maxX = maxY = 100
     maxTime = 30
     SIGHTLIM = 3  # the hard cap, in matrix units (MU's now) of how far someone can see
     clock = pygame.time.Clock()
@@ -828,11 +892,9 @@ def main(genomes, config):
         newMatrix = Matrix(maxX, maxY, maxTime)
         newMatrix = new_Gen(newMatrix, creatures)
 
-        # print("04040404")
         if len(creatures) == 0:
             run = False
             break
-        # print("05050505")
 
         for time in range(maxTime-1):
             for fooder in newMatrix.foods:
@@ -870,33 +932,18 @@ def main(genomes, config):
 
                 newMatrix.apply_Hunger(nets, ge, creatures)
 
-                # decisionX = dec()
-                # decisionY = dec()
-                # xDist = 0
-                # yDist = 0
-                # if decisionX == 0:
-                #     xDist += creer.speed
-                # elif decisionX == 1:
-                #     xDist -= creer.speed
-                # if decisionY == 0:
-                #     yDist += creer.speed
-                # elif decisionY == 1:
-                #     yDist -= creer.speed
-                # newMatrix.move_Check(creer, xDist, yDist, time, ge[i])
-
         # print("main_state is ", main_state.state, " before going into stateHandler.")
         main_state.set_state(stateHandler(newMatrix, size[0], size[1], maxTime, main_state.state))
         # print("main_state is ", main_state.state, " after going into stateHandler.")
 
         #if main_state = 3, run once, if 4, run 5 times, if 5, run 10 times
         if main_state.state == 3:
-            main_state.run_once()
+            main_state.run_x_times(1)
         elif main_state.state == 4:
             # print("button successfully set state to 4.")
             main_state.run_x_times(5)
         elif main_state.state == 5:
             main_state.run_x_times(10)
-        print("This is the current generation number:", main_generation.generation)
         main_generation.nextGeneration()
         del newMatrix
 
